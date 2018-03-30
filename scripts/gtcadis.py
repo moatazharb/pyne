@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+import argparse
+import yaml
+import io
+
+import numpy as np
+from pyne.mesh import Mesh
+from pyne.partisn import write_partisn_input, isotropic_vol_source
+from pyne.dagmc import discretize_geom, load
+from pyne import nucname
+from pyne.bins import pointwise_collapse
+
+
+config_filename = 'config.yml'
+
+config = \
+    """
+# Optional step to assess all materials in geometry for compatibility with
+# SNILB criteria
+step0:
+    # Path to hdf5 geometry file for SNILB check
+    geom_file:
+
+# Prepare PARTISN input file for adjoint photon transport
+step1:
+
+# Calculate T matrix for each material
+step2:
+
+# Calculate adjoint neutron source
+step3:
+
+# Prepare PARTISN input for adjoint neutron transport
+step4:
+
+# Generate Monte Carlo variance reduction parameters
+# (biased source and weight windows)
+step5:
+
+
+"""
+
+
+def setup():
+    """ This function generates a blank config.yml file for the user to 
+    fill in with problem specific values. 
+    """
+    with open(config_filename, 'w') as f:
+        f.write(config)
+    print('File "{}" has been written'.format(config_filename))
+    print('Fill out the fields in this file then run ">> gtcadis.py step0"')
+
+
+def step0(cfg):
+    """ This function performs the SNILB criteria check
+    Parameters
+    ----------
+    cfg : dictionary
+        User input for step 0 from the config.yml file
+    """
+    # Get user-input from config file
+    geom = cfg['geom_file']
+    print 'Your file is: ', geom
+
+
+def main():
+    """ This function manages the setup and steps 0-5 for the GT-CADIS workflow.
+    """
+
+    gtcadis_help = ('This script automates the GT-CADIS process of \n'
+                    'producing variance reduction parameters to optimize the\n'
+                    'neutron transport step of the Rigorous 2-Step (R2S) method.\n')
+    setup_help = ('Prints the file "config.yml" to be\n'
+                  'filled in by the user.\n')
+    step0_help = 'Performs SNILB criteria check.'
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(help=gtcadis_help, dest='command')
+
+    setup_parser = subparsers.add_parser('setup', help=setup_help)
+    step0_parser = subparsers.add_parser('step0', help=step0_help)
+
+    args, other = parser.parse_known_args()
+    if args.command == 'setup':
+        setup()
+
+    with open(config_filename, 'r') as f:
+        cfg = yaml.load(f)
+    if args.command == 'step0':
+        step0(cfg['step0'])
+
+if __name__ == '__main__':
+    main()
+
