@@ -15,11 +15,24 @@ config_filename = 'config.yml'
 
 config = \
     """
-# Optional step to assess all materials in geometry for compatibility with
+# Assess all materials in geometry for compatibility with
 # SNILB criteria
 step0:
-    # Path to hdf5 geometry file for SNILB check
+    # Path to hdf5 geometry file for SNILB check.
+    # The geometry laden file that will be used for activation.
+    # Note that this is the same file that will be used for step 2
     geom_file:
+    # Path to processed nuclear data
+    # (directory containing nuclib, fendl2.0bin.lib, fendl2.0bin.gam)               
+    data_dir:
+    # Number of photon energy groups. This should be compatible with
+    # the dose rate conversion library.
+    # (24 or 42), default is 42.
+    p_group:
+    # Single pulse irradiation time                                                 
+    irr_time:                                                                       
+    # Single decay time of interest                                                 
+    decay_time: 
 
 # Prepare PARTISN input file for adjoint photon transport
 step1:
@@ -42,8 +55,9 @@ step5:
 
 
 def setup():
-    """ This function generates a blank config.yml file for the user to 
-    fill in with problem specific values. 
+    """
+    This function generates a blank config.yml file for the user to 
+    fill in with problem specific values.
     """
     with open(config_filename, 'w') as f:
         f.write(config)
@@ -52,7 +66,8 @@ def setup():
 
 
 def step0(cfg):
-    """ This function performs the SNILB criteria check
+    """
+    This function performs the SNILB criteria check
     Parameters
     ----------
     cfg : dictionary
@@ -60,13 +75,25 @@ def step0(cfg):
     """
     # Get user-input from config file
     geom = cfg['geom_file']
-    print 'Your file is: ', geom
+    data_dir = cfg['data_dir']
+    irr_times = [cfg['irr_time']]
+    decay_times = [cfg['decay_time']]
+    
+    # Define a flat, 175 group neutron spectrum, with magnitude 1E12
+    neutron_spectrum = [1]*175 # will be normalized
+    flux_magnitudes = [1.75E14] # 1E12*175
+
+    # Get materials from geometry file
+    ml = MaterialLibrary(geom)
+    mats = list(ml.values())
+
+    # Perform SNILB check and calculate eta
+    
 
 
 def main():
     """ This function manages the setup and steps 0-5 for the GT-CADIS workflow.
     """
-
     gtcadis_help = ('This script automates the GT-CADIS process of \n'
                     'producing variance reduction parameters to optimize the\n'
                     'neutron transport step of the Rigorous 2-Step (R2S) method.\n')
