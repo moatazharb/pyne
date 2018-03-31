@@ -15,21 +15,23 @@ config_filename = 'config.yml'
 
 config = \
     """
-# Assess all materials in geometry for compatibility with
-# SNILB criteria
+# If 'True' all intermediate files created while running the script will be removed.
+# Leave blank (not even spaces) if you which to retain all intermediate files
+clean: True
+
+# Assess all materials in geometry for compatibility with SNILB criteria
 step0:
-    # Path to hdf5 geometry file for SNILB check.
-    # The geometry laden file that will be used for activation.
-    # Note that this is the same file that will be used for step 2
+    # Path to hdf5 geometry file for SNILB check. This is the geometry laden 
+    # file that will be used for activation. Note that this is the same file 
+    # that will be used for step 2
     geom_file:
     # Path to processed nuclear data
     # (directory containing nuclib, fendl2.0bin.lib, fendl2.0bin.gam)               
     data_dir:
-    # Number of photon energy groups. This should be compatible with
-    # the dose rate conversion library.
-    # (24 or 42), default is 42.
-    p_group:
-    # Single pulse irradiation time                                                 
+    # Number of photon energy groups. This should be compatible with the dose 
+    # rate conversion library. (24 or 42), default is 42.
+    p_groups: 42
+    # Single pulse irradiation time                          
     irr_time:                                                                       
     # Single decay time of interest                                                 
     decay_time: 
@@ -55,8 +57,7 @@ step5:
 
 
 def setup():
-    """
-    This function generates a blank config.yml file for the user to 
+    """This function generates a blank config.yml file for the user to 
     fill in with problem specific values.
     """
     with open(config_filename, 'w') as f:
@@ -65,9 +66,10 @@ def setup():
     print('Fill out the fields in this file then run ">> gtcadis.py step0"')
 
 
-def step0(cfg):
+def step0(cfg, clean):
     """
     This function performs the SNILB criteria check
+    
     Parameters
     ----------
     cfg : dictionary
@@ -78,17 +80,24 @@ def step0(cfg):
     data_dir = cfg['data_dir']
     irr_times = [cfg['irr_time']]
     decay_times = [cfg['decay_time']]
+    num_p_groups = cfg['p_groups']
     
     # Define a flat, 175 group neutron spectrum, with magnitude 1E12
-    neutron_spectrum = [1]*175 # will be normalized
+    neutron_spectrum = [1]*175  # will be normalized
     flux_magnitudes = [1.75E14] # 1E12*175
 
     # Get materials from geometry file
     ml = MaterialLibrary(geom)
     mats = list(ml.values())
+    print list(ml.keys())
 
     # Perform SNILB check and calculate eta
+    eta = calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
+                   decay_times, num_p_groups, run_dir='step0', remove=bool(clean))
+    np.set_printoptions(threshold=np.nan)
     
+    # Save numpy array that will be loaded by step 2
+    np.save('step0_eta.npy', eta)
 
 
 def main():
@@ -110,10 +119,13 @@ def main():
     if args.command == 'setup':
         setup()
 
-    with open(config_filename, 'r') as f:
+    try open(config_filename, 'r') as f:
         cfg = yaml.load(f)
+        clean = cfg['clean']
+    except:
+        raise NameError('config.yml file cannot be found. Please run ">>gtcadis.py setup" first.')
     if args.command == 'step0':
-        step0(cfg['step0'])
+        step0(cfg['step0'], clean)
 
 if __name__ == '__main__':
     main()
