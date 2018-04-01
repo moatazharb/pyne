@@ -1116,7 +1116,8 @@ def calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
                     sup[m, dt] += row_sum
                 i += 1
                 
-    # Calculate eta            
+    # Parse ALARA output. Claculate eta
+    eta = np.zeros(shape=(num_mats, num_decay_times))
     for dt, decay_time in enumerate(decay_times):
        for m, mat in enumerate(mats):
            if np.isclose(tot[m, dt] - zero[m, dt], 0.0, rtol=1E-5) and \
@@ -1174,7 +1175,7 @@ def calc_T(data_dir, mats, neutron_spectrum, irr_times,
     phtn_src_file = _gt_alara(data_dir, mats, neutron_spectrum, flux_magnitudes, 
                               irr_times, decay_times, num_p_groups, run_dir)
 
-    # Parse ALARA output
+    # Parse ALARA output. Calculate T
     T = np.zeros(shape=(num_mats, num_decay_times, num_n_groups, num_p_groups))
     with open(phtn_src_file, 'r') as f:
         i = 0
