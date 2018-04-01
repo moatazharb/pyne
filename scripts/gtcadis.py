@@ -4,53 +4,55 @@ import yaml
 import io
 
 import numpy as np
-from pyne.mesh import Mesh
+from pyne.mesh import Mesh, IMeshTag
+from pyne.material import MaterialLibrary
 from pyne.partisn import write_partisn_input, isotropic_vol_source
-from pyne.dagmc import discretize_geom, load
+from pyne.dagmc import discretize_geom, load, cell_material_assignments
 from pyne import nucname
 from pyne.bins import pointwise_collapse
+from pyne.alara import calc_eta, calc_T
 
 
 config_filename = 'config.yml'
 
 config = \
-    """
+"""
 # If 'True' all intermediate files created while running the script will be removed.
-# Leave blank (not even spaces) if you which to retain all intermediate files
+# Leave blank if you which to retain all intermediate files
 clean: True
 
 # Assess all materials in geometry for compatibility with SNILB criteria
-step0:
-    # Path to hdf5 geometry file for SNILB check. This is the geometry laden 
-    # file that will be used for activation. Note that this is the same file 
+'step0':
+    # Path to hdf5 geometry file for SNILB check. This is the geometry laden
+    # file that will be used for activation. Note that this is the same file
     # that will be used for step 2
-    geom_file:
+    geom_file: 
     # Path to processed nuclear data
-    # (directory containing nuclib, fendl2.0bin.lib, fendl2.0bin.gam)               
-    data_dir:
-    # Number of photon energy groups. This should be compatible with the dose 
-    # rate conversion library. (24 or 42), default is 42.
+    # (directory containing nuclib, fendl2.0bin.lib, fendl2.0bin.gam)
+    data_dir: 
+    # Number of photon energy groups. This should be compatible with the dose
+    # rate conversion library. (24 or 42), default is 42
     p_groups: 42
-    # Single pulse irradiation time                          
-    irr_time:                                                                       
-    # Single decay time of interest                                                 
+    # Single pulse irradiation time
+    irr_time: 
+    # Single decay time of interest
     decay_time: 
 
 # Prepare PARTISN input file for adjoint photon transport
-step1:
+step1: 
 
 # Calculate T matrix for each material
-step2:
+step2: 
 
 # Calculate adjoint neutron source
-step3:
+step3: 
 
 # Prepare PARTISN input for adjoint neutron transport
-step4:
+step4: 
 
 # Generate Monte Carlo variance reduction parameters
 # (biased source and weight windows)
-step5:
+step5: 
 
 
 """
@@ -119,11 +121,12 @@ def main():
     if args.command == 'setup':
         setup()
 
-    try open(config_filename, 'r') as f:
+    with open(config_filename, 'r') as f:
         cfg = yaml.load(f)
         clean = cfg['clean']
-    except:
-        raise NameError('config.yml file cannot be found. Please run ">>gtcadis.py setup" first.')
+   # except:
+   #     raise NameError('config.yml file cannot be found. Please run \n'
+   #                     '">>gtcadis.py setup" first. \n')
     if args.command == 'step0':
         step0(cfg['step0'], clean)
 
