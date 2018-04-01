@@ -943,7 +943,7 @@ def _write_fluxin(fluxes, fluxin_file):
 
 def _write_inp(run_dir, data_dir, mats, num_n_groups, flux_magnitudes,
                irr_times, decay_times, input_file, matlib_file,
-               fluxin_file, phtn_src_file):
+               fluxin_file, phtn_src_file, num_p_groups):
     num_zones = len(mats) * (num_n_groups)
     s = "geometry rectangular\n\nvolume\n"
     for z in range(num_zones):
@@ -965,16 +965,20 @@ def _write_inp(run_dir, data_dir, mats, num_n_groups, flux_magnitudes,
         s += "flux flux_{0} {1} {2} 0 default\n".format(i, fluxin_file, flux_magnitude)
     s += "output zone\n"
     s += "integrate_energy\n"
+    # Photon energy bin structure
     # 24 bin structure
-    #s += "    photon_source {0}/fendl2.0bin {1} 24 1.00E4 2.00E4 5.00E4 1.00E5\n".format(data_dir, phtn_src_file)
-    #s += "    2.00E5 3.00E5 4.00E5 6.00E5 8.00E5 1.00E6 1.22E6 1.44E6 1.66E6\n"
-    #s += "    2.00E6 2.50E6 3.00E6 4.00E6 5.00E6 6.50E6 8.00E6 1.00E7 1.20E7\n"
-    #s += "    1.40E7 2.00E7\nend\n"
-    s += "    photon_source {0}/fendl2.0bin {1} 42\n".format(data_dir, phtn_src_file)
-    s += "     1e4 2e4 3e4 4.5e4 6e4 7e4 7.5e4 1e5 1.5e5 2e5 3e5 4e5\n"
-    s += "     4.5e5 5.1e5 5.12e5 6e5 7e5 8e5 1e6 1.33e6 1.34e6 1.5e6 1.66e6 2e6\n"
-    s += "     2.5e6 3e6 3.5e6 4e6 4.5e6 5e6 5.5e6 6e6 6.5e6 7e6 7.5e6 8e6 1e7\n"
-    s += "     1.2e7 1.4e7 2e7 3e7 5e7\nend\n"
+    if num_p_groups == 24:
+        s += "    photon_source {0}/fendl2.0bin {1} 24 1.00E4 2.00E4 5.00E4 1.00E5\n".format(data_dir, phtn_src_file)
+        s += "    2.00E5 3.00E5 4.00E5 6.00E5 8.00E5 1.00E6 1.22E6 1.44E6 1.66E6\n"
+        s += "    2.00E6 2.50E6 3.00E6 4.00E6 5.00E6 6.50E6 8.00E6 1.00E7 1.20E7\n"
+        s += "    1.40E7 2.00E7\nend\n"
+    # 42 bin structure
+    elif num_p_groups == 42:
+        s += "    photon_source {0}/fendl2.0bin {1} 42\n".format(data_dir, phtn_src_file)
+        s += "     1e4 2e4 3e4 4.5e4 6e4 7e4 7.5e4 1e5 1.5e5 2e5 3e5 4e5\n"
+        s += "     4.5e5 5.1e5 5.12e5 6e5 7e5 8e5 1e6 1.33e6 1.34e6 1.5e6 1.66e6 2e6\n"
+        s += "     2.5e6 3e6 3.5e6 4e6 4.5e6 5e6 5.5e6 6e6 6.5e6 7e6 7.5e6 8e6 1e7\n"
+        s += "     1.2e7 1.4e7 2e7 3e7 5e7\nend\n"
     s += "pulsehistory my_schedule\n"
     s += "    1 0.0 s\nend\n"
     s += "schedule total\n"
@@ -1042,7 +1046,7 @@ def _gt_alara(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
     phtn_src_file = os.path.join(run_dir, "phtn_src")
     _write_inp(run_dir, data_dir, mats, num_n_groups, flux_magnitudes, 
                irr_times, decay_times, input_file, matlib_file,
-               fluxin_file, phtn_src_file)
+               fluxin_file, phtn_src_file, num_p_groups)
 
     # Run ALARA
     sub = subprocess.Popen(['alara',input_file],
