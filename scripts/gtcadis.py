@@ -33,9 +33,9 @@ clean: True
     # Number of photon energy groups. This should be compatible with the dose
     # rate conversion library. (24 or 42), default is 42
     p_groups: 42
-    # Single pulse irradiation time
+    # Single pulse irradiation time [s]
     irr_time: 
-    # Single decay time of interest
+    # Single decay time of interest [s]
     decay_time: 
 
 # Prepare PARTISN input file for adjoint photon transport
@@ -59,7 +59,8 @@ step5:
 
 
 def setup():
-    """This function generates a blank config.yml file for the user to 
+    """
+    This function generates a blank config.yml file for the user to 
     fill in with problem specific values.
     """
     with open(config_filename, 'w') as f:
@@ -76,34 +77,36 @@ def step0(cfg, clean):
     ----------
     cfg : dictionary
         User input for step 0 from the config.yml file
+    clean: str
+        User input for condition on retaining the intermediate files
     """
-    # Get user-input from config file
+    # Get user input from config file
     geom = cfg['geom_file']
     data_dir = cfg['data_dir']
     irr_times = [cfg['irr_time']]
     decay_times = [cfg['decay_time']]
     num_p_groups = cfg['p_groups']
     
-    # Define a flat, 175 group neutron spectrum, with magnitude 1E12
+    # Define a flat, 175 group neutron spectrum, with magnitude 1E12 [n/s]
     neutron_spectrum = [1]*175  # will be normalized
     flux_magnitudes = [1.75E14] # 1E12*175
 
     # Get materials from geometry file
     ml = MaterialLibrary(geom)
     mats = list(ml.values())
-    print list(ml.keys())
 
     # Perform SNILB check and calculate eta
     eta = calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
                    decay_times, num_p_groups, run_dir='step0', remove=bool(clean))
     np.set_printoptions(threshold=np.nan)
     
-    # Save numpy array that will be loaded by step 2
+    # Save numpy array
     np.save('step0_eta.npy', eta)
 
 
 def main():
-    """ This function manages the setup and steps 0-5 for the GT-CADIS workflow.
+    """ 
+    This function manages the setup and steps 0-5 for the GT-CADIS workflow.
     """
     gtcadis_help = ('This script automates the GT-CADIS process of \n'
                     'producing variance reduction parameters to optimize the\n'
@@ -124,9 +127,7 @@ def main():
     with open(config_filename, 'r') as f:
         cfg = yaml.load(f)
         clean = cfg['clean']
-   # except:
-   #     raise NameError('config.yml file cannot be found. Please run \n'
-   #                     '">>gtcadis.py setup" first. \n')
+        
     if args.command == 'step0':
         step0(cfg['step0'], clean)
 
