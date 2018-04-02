@@ -1015,7 +1015,10 @@ def _gt_alara(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
     num_p_groups : int
         Number of photon energy group for source calculation
     run_dir : str
-        Name of run subdirectory        
+        Name of run subdirectory
+    run_type: str
+        Type of run > calc_eta or calc_T
+        Proper flux will be written to alara fluxin file accordingly
 
     Returns
     ----------
