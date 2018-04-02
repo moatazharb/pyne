@@ -994,7 +994,7 @@ def _write_inp(run_dir, data_dir, mats, num_n_groups, flux_magnitudes,
 
 
 def _gt_alara(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times, 
-              decay_times, num_p_groups, run_dir):
+              decay_times, num_p_groups, run_type, run_dir):
     """
     This function prepares necessary input files and runs ALARA
     
@@ -1039,6 +1039,9 @@ def _gt_alara(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
         for n in range(num_n_groups):
             fluxes.append([neutron_spectrum[n] if x ==
                            n else 0 for x in range(num_n_groups)])
+        if run_type == 'eta':
+            fluxes.append(neutron_spectrum) # total spectrum
+            fluxes.append([0]*175) # blank spectrum
     _write_fluxin(fluxes, fluxin_file)
 
     # Write geom file
@@ -1064,7 +1067,7 @@ def calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
     Parameters
     ----------
     data_dir : str
-        Path to nuclib file
+        Path to directory containing nuclib file
     mats : list of Material objects
         List of properties of materials in the geometry
     neutron_spectrum : list
@@ -1094,7 +1097,7 @@ def calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
     if not os.path.exists(run_dir):
         os.makedirs(run_dir)
     phtn_src_file = _gt_alara(data_dir, mats, neutron_spectrum, flux_magnitudes, 
-                              irr_times, decay_times, num_p_groups, run_dir)
+                              irr_times, decay_times, num_p_groups, 'eta', run_dir)
     # Parse ALARA output
     sup = np.zeros(shape=(num_mats, num_decay_times))
     tot = np.zeros(shape=(num_mats, num_decay_times))
@@ -1116,19 +1119,19 @@ def calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
                     sup[m, dt] += row_sum
                 i += 1
                 
-    # Parse ALARA output. Claculate eta
+    # Claculate eta
     eta = np.zeros(shape=(num_mats, num_decay_times))
     for dt, decay_time in enumerate(decay_times):
        for m, mat in enumerate(mats):
            if np.isclose(tot[m, dt] - zero[m, dt], 0.0, rtol=1E-5) and \
               np.isclose(sup[m, dt] - zero[m, dt]*175, 0.0, rtol=1E-5):
-               # tot = 0 and sup = 0, eta = nan >> set = 1.0
+               # tot = background and sup = background, eta = nan >> set = 1.0
                eta[m, dt] = 1.0
            elif tot[m, dt] > 0.0:
-               # tot and sup > 0, eta > 0
+               # tot and sup > background, eta > 0
                eta[m, dt] = (sup[m, dt] - zero[m, dt]*175)/(tot[m, dt] - zero[m, dt])
            else:
-               # tot = 0.0 and sup != 0.0, eta = inf
+               # tot = background and sup != background, eta = inf >> ste = 1e6
                eta[m, dt] = 1E6
     if remove:
         shutil.rmtree(run_dir)  
