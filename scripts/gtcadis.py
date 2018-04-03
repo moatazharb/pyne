@@ -42,7 +42,7 @@ clean: True
 step1: 
 
 # Calculate T matrix for each material
-step2: 
+'step2': 
 
 # Calculate adjoint neutron source
 step3: 
