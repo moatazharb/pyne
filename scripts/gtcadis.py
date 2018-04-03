@@ -18,24 +18,24 @@ config_filename = 'config.yml'
 config = \
 """
 # If 'True' all intermediate files created while running the script will be removed.
-# Leave blank if you which to retain all intermediate files
+# Leave blank if you which to retain all intermediate files.
 clean: True
 
 # Assess all materials in geometry for compatibility with SNILB criteria
 'step0':
     # Path to hdf5 geometry file for SNILB check. This is the geometry laden
     # file that will be used for activation. Note that this is the same file
-    # that will be used for step 2
+    # that will be used for step 2.
     geom_file: 
-    # Path to processed nuclear data
+    # Path to processed nuclear data.
     # (directory containing nuclib, fendl2.0bin.lib, fendl2.0bin.gam)
     data_dir: 
     # Number of photon energy groups. This should be compatible with the dose
-    # rate conversion library. (24 or 42), default is 42
+    # rate conversion library. (24 or 42), default is 42.
     p_groups: 42
-    # Single pulse irradiation time [s]
+    # Single pulse irradiation time [s].
     irr_time: 
-    # Single decay time of interest [s]
+    # Single decay time of interest [s].
     decay_time: 
 
 # Prepare PARTISN input file for adjoint photon transport
@@ -69,23 +69,23 @@ def setup():
     print('Fill out the fields in this file then run ">> gtcadis.py step0"')
 
 
-def step0(cfg, clean):
+def step0(cfg0, clean):
     """
-    This function performs the SNILB criteria check
+    This function performs the SNILB criteria check.
     
     Parameters
     ----------
-    cfg : dictionary
+    cfg0 : dictionary
         User input for step 0 from the config.yml file
     clean: str
         User input for condition on retaining the intermediate files
     """
     # Get user input from config file
-    geom = cfg['geom_file']
-    data_dir = cfg['data_dir']
-    irr_times = [cfg['irr_time']]
-    decay_times = [cfg['decay_time']]
-    num_p_groups = cfg['p_groups']
+    geom = cfg0['geom_file']
+    data_dir = cfg0['data_dir']
+    irr_times = [cfg0['irr_time']]
+    decay_times = [cfg0['decay_time']]
+    num_p_groups = cfg0['p_groups']
     
     # Define a flat, 175 group neutron spectrum, with magnitude 1E12 [n/s]
     neutron_spectrum = [1]*175  # will be normalized
