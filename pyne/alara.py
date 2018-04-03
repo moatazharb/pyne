@@ -1141,10 +1141,10 @@ def calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
     return eta
 
 
-def calc_T(data_dir, mats, neutron_spectrum, irr_times,
-           flux_magnitudes, decay_times, num_p_groups, run_dir, remove):
+def calc_T(data_dir, mats, neutron_spectrum, irr_times, flux_magnitudes, decay_times,
+           num_p_groups, correct, eta, run_dir, remove):
     """
-    This function returns a T matrix for each material and each decay time
+    This function returns a T matrix for each material, n group, p group, and decay time.
     
     Parameters
     ----------
@@ -1161,7 +1161,12 @@ def calc_T(data_dir, mats, neutron_spectrum, irr_times,
     decay_times : list
         Decay times [s]
     num_p_groups: int
-        The number of photon energy groups for source calculation    
+        The number of photon energy groups for source calculation
+    correct: bool
+        If true, T matrix will be calculated with proper background and burnup
+        corrections applied based on eta values
+    eta: str
+        Path to the generated eta file from step 0
     remove : bool
         If true, remove intermediate files
 
@@ -1179,7 +1184,7 @@ def calc_T(data_dir, mats, neutron_spectrum, irr_times,
     if not os.path.exists(run_dir):
         os.makedirs(run_dir)
     phtn_src_file = _gt_alara(data_dir, mats, neutron_spectrum, flux_magnitudes, 
-                              irr_times, decay_times, num_p_groups, run_dir)
+                              irr_times, decay_times, num_p_groups, 'T', run_dir)
 
     # Parse ALARA output. Calculate T
     T = np.zeros(shape=(num_mats, num_decay_times, num_n_groups, num_p_groups))

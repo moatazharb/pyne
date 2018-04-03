@@ -31,11 +31,11 @@ clean: True
     # (directory containing nuclib, fendl2.0bin.lib, fendl2.0bin.gam)
     data_dir: 
     # Number of photon energy groups. This should be compatible with the dose
-    # rate conversion library. (24 or 42), default is 42
+    # rate conversion library. (24 or 42), default is 42.
     p_groups: 42
-    # Single pulse irradiation time [s]
+    # Single pulse irradiation time [s].
     irr_time: 
-    # Single decay time of interest [s]
+    # Single decay time of interest [s].
     decay_time: 
 
 # Prepare PARTISN input file for adjoint photon transport
@@ -44,9 +44,12 @@ step1:
 # Calculate T matrix for each material
 'step2':
     # If 'True', proper background and burnup corrctions based on calculated eta
-    # in step 0 will be applied and the final T matrix will be calculated.
-    # Leave blank if you want to calculate T matrix without correction.
+    # in step 0 will be applied to the calculated T matrix.
+    # Leave blank if you want to calculate T matrix without corrections.
     correct: True
+    # Path to the eta file produced in step 0.
+    # change only if the file has been manually renamed or moved.
+    eta_0: step0_eta.npy
 
 # Calculate adjoint neutron source
 step3: 
@@ -93,7 +96,8 @@ def step2(cfg0, cfg2, clean):
     irr_times = [cfg0['irr_time']]
     decay_times = [cfg0['decay_time']]
     num_p_groups = cfg0['p_groups']
-    corrected_T = cfg2['correct']
+    correct_T = cfg2['correct']
+    eta_0 = cfg2['eta_0']
     
     # Define a flat, 175 group neutron spectrum, with magnitude 1E12 [n/s]
     neutron_spectrum = [1]*175  # will be normalized
@@ -105,7 +109,8 @@ def step2(cfg0, cfg2, clean):
 
     # Perform SNILB check and calculate eta
     T = calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
-                   decay_times, num_p_groups, run_dir='step2', remove=bool(clean))
+                   decay_times, num_p_groups, correct=bool(correct_T), eta_0,
+                   run_dir='step2', remove=bool(clean))
     np.set_printoptions(threshold=np.nan)
     
     # Save numpy array
@@ -121,7 +126,7 @@ def main():
                     'neutron transport step of the Rigorous 2-Step (R2S) method.\n')
     setup_help = ('Prints the file "config.yml" to be\n'
                   'filled in by the user.\n')
-    step2_help = 'Calculates the T matrix for each material in the geometry.'
+    step2_help = 'Calculates T matrix for each material in the geometry.'
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help=gtcadis_help, dest='command')
 
@@ -137,7 +142,7 @@ def main():
         clean = cfg['clean']
         
     if args.command == 'step2':
-        step2(cfg['step0'], cfg['step2'],clean)
+        step2(cfg['step0'], cfg['step2'], clean)
 
 if __name__ == '__main__':
     main()
