@@ -17,17 +17,17 @@ config_filename = 'config.yml'
 
 config = \
 """
-# If 'True' all intermediate files created while running the script will be removed.
-# Leave blank if you which to retain all intermediate files
+# If 'True', all intermediate files created while running the script will be removed.
+# Leave blank if you which to retain all intermediate files.
 clean: True
 
 # Assess all materials in geometry for compatibility with SNILB criteria
 'step0':
     # Path to hdf5 geometry file for SNILB check. This is the geometry laden
     # file that will be used for activation. Note that this is the same file
-    # that will be used for step 2
+    # that will be used for step 2.
     geom_file: 
-    # Path to processed nuclear data
+    # Path to processed nuclear data.
     # (directory containing nuclib, fendl2.0bin.lib, fendl2.0bin.gam)
     data_dir: 
     # Number of photon energy groups. This should be compatible with the dose
@@ -42,7 +42,11 @@ clean: True
 step1: 
 
 # Calculate T matrix for each material
-'step2': 
+'step2':
+    # If 'True', proper background and burnup corrctions based on calculated eta
+    # in step 0 will be applied and the final T matrix will be calculated.
+    # Leave blank if you want to calculate T matrix without correction.
+    correct: True
 
 # Calculate adjoint neutron source
 step3: 
@@ -69,23 +73,27 @@ def setup():
     print('Fill out the fields in this file then run ">> gtcadis.py step0"')
 
 
-def step0(cfg, clean):
+def step2(cfg0, cfg2, clean):
     """
-    This function performs the SNILB criteria check
+    This function calculates the T matrix for each material, n group, p group, and
+    decay time.
     
     Parameters
     ----------
-    cfg : dictionary
+    cfg0 : dictionary
         User input for step 0 from the config.yml file
+    cfg2: dictionary
+        User input for step 2 from config.yml file
     clean: str
         User input for condition on retaining the intermediate files
     """
     # Get user input from config file
-    geom = cfg['geom_file']
-    data_dir = cfg['data_dir']
-    irr_times = [cfg['irr_time']]
-    decay_times = [cfg['decay_time']]
-    num_p_groups = cfg['p_groups']
+    geom = cfg0['geom_file']
+    data_dir = cfg0['data_dir']
+    irr_times = [cfg0['irr_time']]
+    decay_times = [cfg0['decay_time']]
+    num_p_groups = cfg0['p_groups']
+    corrected_T = cfg2['correct']
     
     # Define a flat, 175 group neutron spectrum, with magnitude 1E12 [n/s]
     neutron_spectrum = [1]*175  # will be normalized
@@ -96,12 +104,12 @@ def step0(cfg, clean):
     mats = list(ml.values())
 
     # Perform SNILB check and calculate eta
-    eta = calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
-                   decay_times, num_p_groups, run_dir='step0', remove=bool(clean))
+    T = calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
+                   decay_times, num_p_groups, run_dir='step2', remove=bool(clean))
     np.set_printoptions(threshold=np.nan)
     
     # Save numpy array
-    np.save('step0_eta.npy', eta)
+    np.save('step2_T.npy', T)
 
 
 def main():
@@ -113,12 +121,12 @@ def main():
                     'neutron transport step of the Rigorous 2-Step (R2S) method.\n')
     setup_help = ('Prints the file "config.yml" to be\n'
                   'filled in by the user.\n')
-    step0_help = 'Performs SNILB criteria check.'
+    step2_help = 'Calculates the T matrix for each material in the geometry.'
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help=gtcadis_help, dest='command')
 
     setup_parser = subparsers.add_parser('setup', help=setup_help)
-    step0_parser = subparsers.add_parser('step0', help=step0_help)
+    step2_parser = subparsers.add_parser('step2', help=step2_help)
 
     args, other = parser.parse_known_args()
     if args.command == 'setup':
@@ -128,8 +136,8 @@ def main():
         cfg = yaml.load(f)
         clean = cfg['clean']
         
-    if args.command == 'step0':
-        step0(cfg['step0'], clean)
+    if args.command == 'step2':
+        step2(cfg['step0'], cfg['step2'],clean)
 
 if __name__ == '__main__':
     main()
