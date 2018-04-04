@@ -22,7 +22,7 @@ config = \
 clean: True
 
 # Assess all materials in geometry for compatibility with SNILB criteria
-'step0':
+step0:
     # Path to hdf5 geometry file for SNILB check. This is the geometry laden
     # file that will be used for activation. Note that this is the same file
     # that will be used for step 2.
@@ -42,7 +42,7 @@ clean: True
 step1: 
 
 # Calculate T matrix for each material
-'step2': 
+step2: 
 
 # Calculate adjoint neutron source
 step3: 
