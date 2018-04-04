@@ -1141,8 +1141,8 @@ def calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
     return eta
 
 
-def calc_T(data_dir, mats, neutron_spectrum, irr_times, flux_magnitudes, decay_times,
-           num_p_groups, correct, eta, run_dir, remove):
+def calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times, decay_times,
+           num_p_groups, eta, run_dir, correct, remove):
     """
     This function returns a T matrix for each material, n group, p group, and decay time.
     
@@ -1162,11 +1162,11 @@ def calc_T(data_dir, mats, neutron_spectrum, irr_times, flux_magnitudes, decay_t
         Decay times [s]
     num_p_groups: int
         The number of photon energy groups for source calculation
+    eta: str
+        Path to the generated eta file from step 0
     correct: bool
         If true, T matrix will be calculated with proper background and burnup
         corrections applied based on eta values
-    eta: str
-        Path to the generated eta file from step 0
     remove : bool
         If true, remove intermediate files
 
