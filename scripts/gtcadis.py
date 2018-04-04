@@ -109,8 +109,8 @@ def step2(cfg0, cfg2, clean):
 
     # Perform SNILB check and calculate eta
     T = calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
-                   decay_times, num_p_groups, correct=bool(correct_T), eta_0,
-                   run_dir='step2', remove=bool(clean))
+               decay_times, num_p_groups, eta_0, run_dir='step2',
+               correct=bool(correct_T), remove=bool(clean))
     np.set_printoptions(threshold=np.nan)
     
     # Save numpy array
