@@ -1043,11 +1043,15 @@ def _gt_alara(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
             fluxes.append([neutron_spectrum[n] if x ==
                            n else 0 for x in range(num_n_groups)])
         if run_type == 'eta':
+            warn("Updating flux for eta calculation")
             fluxes.append(neutron_spectrum) # total spectrum
             fluxes.append([0]*175) # blank spectrum
     _write_fluxin(fluxes, fluxin_file)
 
     # Write geom file
+    if run_type == 'eta':
+        warn("Updating number of n groups for eta calculation")
+        num_n_groups += 2
     input_file = os.path.join(run_dir, "inp")
     phtn_src_file = os.path.join(run_dir, "phtn_src")
     _write_inp(run_dir, data_dir, mats, num_n_groups, flux_magnitudes, 
@@ -1130,7 +1134,7 @@ def calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
               np.isclose(sup[m, dt] - zero[m, dt]*175, 0.0, rtol=1E-5):
                # tot = background and sup = background, eta = nan >> set = 1.0
                eta[m, dt] = 1.0
-           elif tot[m, dt] > 0.0:
+           elif tot[m, dt] > zero[m, dt]:
                # tot and sup > background, eta > 0
                eta[m, dt] = (sup[m, dt] - zero[m, dt]*175)/(tot[m, dt] - zero[m, dt])
            else:
