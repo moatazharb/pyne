@@ -102,7 +102,10 @@ def step0(cfg0, clean):
     
     # Save numpy array
     np.save('step0_eta.npy', eta)
-
+    # Write a list of material name and eta value to a text file
+    with open('step0_eta.txt', 'w') as f:
+        for m, mat in enumerate(ml.keys()):
+            f.write(mat.split(':')[1] + ', eta=' + str(eta[m][0]) + '\n')
 
 def main():
     """ 
