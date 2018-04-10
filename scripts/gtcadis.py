@@ -246,11 +246,11 @@ def step3(cfg2, cfg3):
     adj_p = m.flux[:]
    
     # Load geometry and get material assignments
-    ml = MaterialLibrary(geom)
     load(geom)
+    ml = MaterialLibrary(geom)
     cell_mats_raw = cell_material_assignments(geom)
    # cell_mats = {c:int(n.split(":")[1].split("/")[0][1]) if c in [2, 3, 4] else 0 for c, n in cell_mats_raw.items()}
-   cell_mats = {c:ml.keys().index(n.split(":")[1].split("/")[0])+1 if n.split(":")[1].split("/")[0] in ml.keys() else 0 for c, n in cell_mats_raw.items()}
+    cell_mats = {c:ml.keys().index(n.split(":")[1].split("/")[0])+1 if n.split(":")[1].split("/")[0] in ml.keys() else 0 for c, n in cell_mats_raw.items()}
     
     # Load T matrix
     T = np.load('tempT.npy')
