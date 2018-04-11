@@ -17,8 +17,8 @@ config_filename = 'config.yml'
 
 config = \
 """
-# If 'True' all intermediate files created while running the script will be removed.
-# Leave blank if you which to retain all intermediate files.
+# If 'True' all intermediate files created while running the script will be deleted.
+# Change to 'False' if you want to retain all intermediate files.
 clean: True
 
 # Assess all materials in geometry for compatibility with SNILB criteria
@@ -76,15 +76,15 @@ def step0(cfg0, clean):
     Parameters
     ----------
     cfg0 : dictionary
-        User input for step 0 from the config.yml file
+        User input for Step 0 from the config.yml file
     clean: str
-        User input for condition on retaining the intermediate files
+        User input for condition on deleting the intermediate files
     """
     # Get user input from config file
     geom = cfg0['geom_file']
     data_dir = cfg0['data_dir']
-    irr_times = [cfg0['irr_time']]
-    decay_times = [cfg0['decay_time']]
+    irr_times = str(cfg0['irr_time']).split(' ')
+    decay_times = str(cfg0['decay_time']).split(' ')
     num_p_groups = cfg0['p_groups']
     
     # Define a flat, 175 group neutron spectrum, with magnitude 1E12 [n/s]
@@ -97,7 +97,7 @@ def step0(cfg0, clean):
 
     # Perform SNILB check and calculate eta
     eta = calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
-                   decay_times, num_p_groups, run_dir='step0', remove=bool(clean))
+                   decay_times, num_p_groups, clean, run_dir='step0')
     np.set_printoptions(threshold=np.nan)
     
     # Save numpy array

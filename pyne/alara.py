@@ -1053,6 +1053,8 @@ def _gt_alara(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
     phtn_src_file = os.path.join(run_dir, "phtn_src")
     if run_type == 'eta':
         warn("Updating number of n groups for eta calculation")
+        # For eta calculation two extra zones are needed; one for
+        # the whole spectrum and one for the zero spectrum
         num_n_groups += 2
     _write_inp(run_dir, data_dir, mats, num_n_groups, flux_magnitudes, 
                irr_times, decay_times, input_file, matlib_file,
@@ -1066,7 +1068,7 @@ def _gt_alara(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
 
 
 def calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
-             decay_times, num_p_groups, run_dir, remove):
+             decay_times, num_p_groups, clean, run_dir):
     """
     This function returns eta values (SNILB check result) for each material 
     and each decay time
@@ -1086,9 +1088,9 @@ def calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
     decay_times : list
         Decay times [s]
     num_p_groups: int
-        The number of photon energy groups for source calculation    
-    remove : bool
-        If true, remove intermediate files
+        The number of photon energy groups for ALARA calculation    
+    clean : str
+        If 'True', remove intermediate files
         
     Returns
     ----------
@@ -1132,7 +1134,7 @@ def calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
        for m, mat in enumerate(mats):
            if np.isclose(tot[m, dt] - zero[m, dt], 0.0, rtol=1E-5) and \
               np.isclose(sup[m, dt] - zero[m, dt]*175, 0.0, rtol=1E-5):
-               # tot = background and sup = background, eta = nan >> set = 1.0
+               # tot = background and sup = background, eta = NaN >> set = 1.0
                eta[m, dt] = 1.0
            elif tot[m, dt] > zero[m, dt]:
                # tot and sup > background, eta > 0
@@ -1140,13 +1142,13 @@ def calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
            else:
                # tot = background and sup != background, eta = inf >> ste = 1e6
                eta[m, dt] = 1E6
-    if remove:
+    if clean == 'True':
         shutil.rmtree(run_dir)  
     return eta
 
 
 def calc_T(data_dir, mats, neutron_spectrum, irr_times,
-           flux_magnitudes, decay_times, num_p_groups, run_dir, remove):
+           flux_magnitudes, decay_times, num_p_groups, clean, run_dir):
     """
     This function returns a T matrix for each material and each decay time
     
@@ -1198,6 +1200,6 @@ def calc_T(data_dir, mats, neutron_spectrum, irr_times,
                 T[m, dt, n, :] = [
                     float(x) / (neutron_spectrum[n] * flux_magnitudes[0]) for x in l[3:]]
                 i += 1
-    if remove:
+    if clean == 'True':
         shutil.rmtree(run_dir)
     return T
