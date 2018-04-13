@@ -1194,5 +1194,5 @@ def calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
     if clean:
         warn("Deleting intermediate files for Step 2")
         shutil.rmtree(run_dir)
-return T    
+    return T    
 
