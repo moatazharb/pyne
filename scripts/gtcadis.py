@@ -87,7 +87,7 @@ def setup():
         f.write(config)
     print('File "{}" has been written'.format(config_filename))
     print('Fill out the fields in this file then run ">> gtcadis.py step1 \n'
-           'or optional step0, first"')
+          'or optional step0, first"')
 
 def _names_dict():
     names = {'h1': 'h1', 'h2': 'd', 'h3': 'h3', 'he3': 'he3',
@@ -217,16 +217,17 @@ def step1(cfg1):
 
     # Generate 42 photon energy bins [eV]
     #  First bin has been replaced with 1 for log interpolation
-    photon_bins = np.array([1e-6, 0.01, 0.02, 0.03, 0.045, 0.06, 0.07, 0.075, 0.1, 0.15,
-                            0.2, 0.3, 0.4, 0.45, 0.51, 0.512, 0.6, 0.7, 0.8, 1, 1.33, 1.34,
-                            1.5, 1.66, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 10,
-                            12, 14, 20, 30, 50])
+    photon_bins = np.array([1e-6, 0.01, 0.02, 0.03, 0.045, 0.06, 0.07, 0.075, 
+                            0.1, 0.15, 0.2, 0.3, 0.4, 0.45, 0.51, 0.512, 0.6, 
+                            0.7, 0.8, 1, 1.33, 1.34, 1.5, 1.66, 2, 2.5, 3, 3.5, 
+                            4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 10, 12, 14, 20, 
+                            30, 50])
     # ICRP 74 flux-to-dose conversion factors in pico-Sv/s per photon flux
-    de = np.array([0.01, 0.015, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.1, 0.15, 0.2, 0.3,
-                   0.4, 0.5, 0.6, 0.8, 1, 2, 4, 6, 8, 10])
-    df = np.array([0.0485, 0.1254, 0.205, 0.2999, 0.3381, 0.3572, 0.378, 0.4066, 0.4399, 0.5172,
-                   0.7523, 1.0041, 1.5083, 1.9958, 2.4657, 2.9082, 3.7269, 4.4834, 7.4896,
-                   12.0153, 15.9873, 19.9191, 23.76])
+    de = np.array([0.01, 0.015, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.1, 
+                   0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1, 2, 4, 6, 8, 10])
+    df = np.array([0.0485, 0.1254, 0.205, 0.2999, 0.3381, 0.3572, 0.378, 0.4066,
+                   0.4399, 0.5172, 0.7523, 1.0041, 1.5083, 1.9958, 2.4657, 2.9082, 
+                   3.7269, 4.4834, 7.4896, 12.0153, 15.9873, 19.9191, 23.76])
     # Convert to Sv/s per photon FLUX 
     pico = 1.0e-12 
     df = df * pico 
@@ -263,24 +264,64 @@ def step1(cfg1):
         data_hdf5path="/materials",
         nuc_hdf5path="/nucid",
         fine_per_coarse=1)
+        
+def step2(cfg1, cfg2, clean):
+    """
+    This function calculates the T matrix for each material, neutron group, 
+    photon group, and decay time.
+    
+    Parameters
+    ----------
+    cfg1 : dictionary
+        User input for step 1 from the config.yml file
+    cfg2: dictionary
+        User input for step 2 from config.yml file
+    clean: str
+        User input for condition on retaining the intermediate files
+    """
+    # Get user input from config file
+    geom = cfg2['geom_file']
+    data_dir = cfg2['data_dir']
+    irr_times = str(cfg2['irr_time']).split(' ')
+    decay_times = str(cfg2['decay_time']).split(' ')
+    num_p_groups = cfg1['p_groups']
+    
+    # Define a flat, 175 group neutron spectrum, with magnitude 1E12 [n/s]
+    neutron_spectrum = [1]*175  # will be normalized
+    flux_magnitudes = [1.75E14] # 1E12*175
+
+    # Get materials from geometry file
+    ml = MaterialLibrary(geom)
+    mats = list(ml.values())
+
+    # Calculate T matrix
+    run_dir = 'step2'
+    T = calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
+               decay_times, num_p_groups, run_dir, clean)
+    np.set_printoptions(threshold=np.nan)
+    
+    # Save numpy array
+    np.save('step2_T.npy', T)        
 
 def main():
     """ 
     This function manages the setup and steps 1-5 for the GT-CADIS workflow.
     """
-    gtcadis_help = ('This script automates the GT-CADIS process of \n'
-                    'producing variance reduction parameters to optimize the\n'
-                    'neutron transport step of the Rigorous 2-Step (R2S) method.\n')
+    gtcadis_help = ('This script automates the GT-CADIS process of producing \n'
+                    'variance reduction parameters to optimize the neutron \n'
+                    'transport step of the Rigorous 2-Step (R2S) method.\n')
     setup_help = ('Prints the file "config.yml" to be\n'
                   'filled in by the user.\n')
     step0_help = 'Performs SNILB criteria check.'
     step1_help = 'Creates the PARTISN input file for adjoint photon transport.'
+    step2_help = 'Calculates T matrix for each material in the geometry.'
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help=gtcadis_help, dest='command')
 
     setup_parser = subparsers.add_parser('setup', help=setup_help)
     step0_parser = subparsers.add_parser('step0', help=step0_help)
     step1_parser = subparsers.add_parser('step1', help=step1_help)
+    step2_parser = subparsers.add_parser('step2', help=step2_help)
 
     args, other = parser.parse_known_args()
     if args.command == 'setup':
@@ -295,6 +336,9 @@ def main():
 
     elif args.command == 'step1':
         step1(cfg['step1'])
+        
+    elif args.command == 'step2':
+        step2(cfg['step1'], cfg['step2'], clean)    
 
 if __name__ == '__main__':
     main()
