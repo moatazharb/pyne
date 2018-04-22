@@ -7,12 +7,13 @@ import argparse
 import subprocess
 import numpy as np
 from pyne import nucname
-from pyne.mesh import Mesh, IMeshTag
+from pyne.mesh import Mesh
+from pyne.mcnp import Meshtal
 from pyne.bins import pointwise_collapse
 from pyne.material import MaterialLibrary
 from pyne.partisn import write_partisn_input, isotropic_vol_source
 from pyne.dagmc import discretize_geom, load, cell_material_assignments
-from pyne.alara import calc_eta, calc_T
+from pyne.alara import calc_eta, calc_T, calc_gts
 
 
 config_filename = 'config.yml'
@@ -64,7 +65,15 @@ step2:
     # Single pulse irradiation time [s].
     irr_time: 
     # Single decay time of interest [s].
-    decay_time: 
+    decay_time:
+    # Perform GTS (spectrum) correction:
+    # Path to the photon source file produced using r2s step 2. This is the 
+    # photon source produced using an estimate of the neutron flux distribution 
+    # in the problem.
+    # File name should be source_<int>.h5m followed by the path to the meshtal 
+    # file and the tally number.
+    gts: source_1.h5m meshtal 14
+    
 
 # Calculate adjoint neutron source
 step3:
@@ -285,6 +294,16 @@ def step2(cfg1, cfg2, clean):
     irr_times = str(cfg2['irr_time']).split(' ')
     decay_times = str(cfg2['decay_time']).split(' ')
     num_p_groups = cfg1['p_groups']
+    gts = str(cfg2['gts']).split(' ')
+
+    # Set input values for T matrix spectrum correction
+    gtS_correction = False
+    if len(gts) == 3:
+        gtS_correction = True
+        [Pmesh, meshtal, tally_number] = gts
+    else:
+        print('Inputs to gts "Spectrum correction" are insufficient!. \n'
+              'Spectrum correction of T matrix  will not be performed.')
     
     # Define a flat, 175 group neutron spectrum, with magnitude 1E12 [n/s]
     neutron_spectrum = [1]*175  # will be normalized
@@ -299,9 +318,12 @@ def step2(cfg1, cfg2, clean):
     T = calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
                decay_times, num_p_groups, run_dir, clean)
     np.set_printoptions(threshold=np.nan)
-    
     # Save numpy array
-    np.save('step2_T.npy', T)        
+    np.save('step2_T.npy', T)
+
+    # Perform spectrum correction of the calculated T matrix
+    if gtS_correction:
+        calc_gts(geom, meshtal, tally_number, Pmesh, run_dir, clean)
 
 def main():
     """ 

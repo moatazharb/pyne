@@ -1192,7 +1192,122 @@ def calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
                 i += 1
   
     if clean:
-        warn("Deleting intermediate files for Step 2")
+        print("Deleting intermediate files for Step 2")
         shutil.rmtree(run_dir)
     return T    
 
+def calc_gts(geom, meshtal, tally_number, Pmesh, run_dir, clean):
+    """
+    Function that performs GT-CADIS spectrum correction
+
+    Parameters:
+    ----------
+    geom: str
+        Material laden (.hdf5) geometry file
+    meshtal: str
+        MCNP meshtal file 
+    tally_number: int
+        Number of fmesh tally in meshtal file used to produce 
+        photon source in r2s.py Step 2
+    Pmesh: str
+        Photon source file produced from r2s.py Step 2
+
+    Returns
+    ----------
+    T : numpy.ndarray
+        T matrix for each material listed.  This is a 4D array 
+        [mat, decay_time, n_group, p_group].
+    """
+    if not os.path.exists(run_dir):
+        os.makedirs(run_dir)
+
+    # Load geometry file and get material names and cell fractions
+    if not os.path.exists(geom):
+        raise RuntimeError('Geometry file does not exist!')
+    load(geom)
+    mat_lib = MaterialLibrary(geom)
+    # Create a list of material names
+    mat_names_raw = list(m for m in mat_lib.keys())
+    mat_names = list(m.split(':')[1].split("/")[0] for m in mat_lib.keys())
+    cell_mats = cell_material_assignments(geom)
+
+    # Load MCNP meshtal file
+    if not os.path.exists(meshtal):
+        raise RuntimeError('Neutron flux meshtal file does not exist!')
+    flux_mesh = Meshtal(meshtal).tally[tally_number]
+    num_n_groups = len(flux_mesh.e_bounds) - 1
+    # Get tag handle of the neutron flux
+    # Neutron energy groups ordered from low to high as the default.
+    flux_tag = flux_mesh.mesh.getTagHandle('neutron_result')
+
+    # Load photon source mesh file
+    if not os.path.exists(Pmesh):
+        raise RuntimeError('Photon source mesh file does not exist!')
+    photon_mesh = Mesh(structured=True, mesh=Pmesh)
+    # Get tag handle of photon emission intensity
+    photon_tag = photon_mesh.mesh.getTagHandle('source_density')
+
+    # Load T matrix
+    T = 'step2_T.npy'
+    if not os.path.exists(T):
+        raise RuntimeError('T matrix array file does not exist!')
+    T_array = np.load(T)
+
+    # Tag cell fractions to flux mesh
+    cell_fracs = discretize_geom(flux_mesh, num_rays=49, grid=True)
+    flux_mesh.tag_cell_fracs(cell_fracs)
+    # Get tag handles of cell and cell_frac tags
+    cell_tag = flux_mesh.mesh.getTagHandle('cell_number')
+    cellfrac_tag = flux_mesh.mesh.getTagHandle('cell_fracs')
+
+    # Get the decay time index from photon source file name
+    # source_1.h5m >> decay_time = 0
+    decay_time = int(Pmesh.split('/')[-1].split('.')[0][-1]) - 1
+
+    # Create text files to store mesh voxels eta values
+    eta_vh = open(os.path.join(run_dir, 'step2_gts.txt'), 'w')
+    # Loop over mesh voxels and calculate eta_v,h values
+    for voxel in flux_mesh:
+        # Get neutron flux and Re values
+        voxel_flux = flux_tag[voxel[2]].reshape(num_n_groups, 1)
+        # Get list of cells in mesh voxel
+        cells = cell_tag[voxel[2]]
+        # Get list of volume fractions of cells in the mesh voxel
+        vol_fracs = cellfrac_tag[voxel[2]]
+        cell_frac = dict(zip(cells, vol_fracs))
+        # Get photon emission density from photon source mesh
+        voxel_photon = photon_tag[voxel[2]].reshape(1, num_p_groups)
+        # Create temporary arrays to store photon source and eta values
+        Psource_temp = np.zeros((1, num_p_groups))
+        eta_v = np.zeros((1, num_p_groups))
+        # loop over cells. vacancy is -1
+        for cell in cells[cells >= 0]:
+            if not cell_mats[cell] in mat_names_raw:
+                continue
+            # Get material name index for T
+            mat = mat_names.index(cell_mats[cell].split(":")[1].split("/")[0])
+            # Get volume fraction of the cell in the mesh voxel
+            vol_frac = cell_frac[cell]
+            T_v = T_array[mat,decay_time,:,:].reshape(num_n_groups,
+                                                      num_p_groups)*vol_frac
+            
+            # Calculate the photon source using T matrix
+            Psource_temp[0,:] += np.sum(T_v*voxel_flux, axis=0)
+        eta_v[0,:] = Psource_temp / voxel_photon    
+        # Save eta_v,h
+        np.savetxt(eta_vh, eta)
+        
+    eta_vh.close()
+    # tag eta values to mesh
+    from pyne.mesh import IMeshTag
+    for tag in flux_mesh.mesh.getAllTags(voxel):
+        flux_mesh.mesh.destroyTag(tag, True)
+    etavh_tag = IMeshTag(num_p_groups, float, mesh=flux_mesh, name='eta_vh')
+    etavh_tag[:] = np.loadtxt(os.path.join(run_dir, 'step2_gts.txt'))
+    # Save mesh. File name is step2_gts_<number of decay time + 1>  to be same
+    # as photon source file name.  source_1.h5m >> step2_gts_1.h5m
+    flux_mesh.mesh.save("step2_gts_{0}.h5m".format(decay_time))
+    
+    if clean:
+        print("Deleting intermediate files for Step 2")
+        shutil.rmtree(run_dir)    
