@@ -322,7 +322,7 @@ def step2(cfg1, cfg2, clean):
 
     # Perform spectra correction of the calculated T matrix
     if gts_correction:
-        calc_gts(geom, meshtal, int(tally_number), Pmesh, run_dir, clean)
+        calc_gts(geom, meshtal, int(tally_number), Pmesh, num_p_groups, run_dir, clean)
 
 def main():
     """ 

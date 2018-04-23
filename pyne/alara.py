@@ -1198,7 +1198,7 @@ def calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
         shutil.rmtree(run_dir)
     return T    
 
-def calc_gts(geom, meshtal, tally_number, Pmesh, run_dir, clean):
+def calc_gts(geom, meshtal, tally_number, Pmesh, num_p_groups, run_dir, clean):
     """
     Function that performs GT-CADIS spectrum correction
 
@@ -1213,6 +1213,8 @@ def calc_gts(geom, meshtal, tally_number, Pmesh, run_dir, clean):
         photon source in r2s.py Step 2
     Pmesh: str
         Photon source file produced from r2s.py Step 2
+    num_p_groups : int
+        The number of photon energy groups
     run_dir: str
         Directory to store spectra correction intermediate files
     clean : bool
