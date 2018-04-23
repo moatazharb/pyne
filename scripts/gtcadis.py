@@ -297,13 +297,13 @@ def step2(cfg1, cfg2, clean):
     gts = str(cfg2['gts']).split(' ')
 
     # Set input values for T matrix spectrum correction
-    gtS_correction = False
+    gts_correction = False
     if len(gts) == 3:
-        gtS_correction = True
+        gts_correction = True
         [Pmesh, meshtal, tally_number] = gts
     else:
-        print('Inputs to gts "Spectrum correction" are insufficient!. \n'
-              'Spectrum correction of T matrix  will not be performed.')
+        print('Inputs to gts "Spectra correction" are insufficient!. \n'
+              'Spectra correction of T matrix will not be performed.')
     
     # Define a flat, 175 group neutron spectrum, with magnitude 1E12 [n/s]
     neutron_spectrum = [1]*175  # will be normalized
@@ -321,8 +321,8 @@ def step2(cfg1, cfg2, clean):
     # Save numpy array
     np.save('step2_T.npy', T)
 
-    # Perform spectrum correction of the calculated T matrix
-    if gtS_correction:
+    # Perform spectra correction of the calculated T matrix
+    if gts_correction:
         calc_gts(geom, meshtal, tally_number, Pmesh, run_dir, clean)
 
 def main():
