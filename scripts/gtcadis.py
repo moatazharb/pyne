@@ -8,11 +8,10 @@ import subprocess
 import numpy as np
 from pyne import nucname
 from pyne.mesh import Mesh
-from pyne.mcnp import Meshtal
 from pyne.bins import pointwise_collapse
 from pyne.material import MaterialLibrary
 from pyne.partisn import write_partisn_input, isotropic_vol_source
-from pyne.dagmc import discretize_geom, load, cell_material_assignments
+from pyne.dagmc import  discretize_geom, load
 from pyne.alara import calc_eta, calc_T, calc_gts
 
 
@@ -323,7 +322,7 @@ def step2(cfg1, cfg2, clean):
 
     # Perform spectra correction of the calculated T matrix
     if gts_correction:
-        calc_gts(geom, meshtal, tally_number, Pmesh, run_dir, clean)
+        calc_gts(geom, meshtal, int(tally_number), Pmesh, run_dir, clean)
 
 def main():
     """ 

@@ -26,11 +26,13 @@ except ImportError:
                   QAWarning)
 
 from pyne.mesh import Mesh, MeshError
-from pyne.material import Material, from_atom_frac
+from pyne.material import Material, MaterialLibrary, from_atom_frac
 from pyne import nucname
 from pyne.nucname import serpent, alara, znum, anum
 from pyne.data import N_A, decay_const, decay_children, branch_ratio
 from pyne.xs.data_source import SimpleDataSource
+from pyne.dagmc import discretize_geom, load, cell_material_assignments
+from pyne.mcnp import Meshtal
 
 
 def mesh_to_fluxin(flux_mesh, flux_tag, fluxin="fluxin.out",
@@ -1216,6 +1218,7 @@ def calc_gts(geom, meshtal, tally_number, Pmesh, run_dir, clean):
     clean : bool
         If True, remove run_dir
     """
+    print('Calculating spectra correction values "eta_vh" for mesh')
     # Create run_dir
     if not os.path.exists(run_dir):
         os.makedirs(run_dir)
