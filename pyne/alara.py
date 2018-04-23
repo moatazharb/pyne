@@ -1300,21 +1300,21 @@ def calc_gts(geom, meshtal, tally_number, Pmesh, num_p_groups, run_dir, clean):
             Psource_temp[0,:] += np.sum(T_v*voxel_flux, axis=0)
         # Calculate eta for voxel v    
         eta_v[0,:] = Psource_temp / voxel_photon
-        eta_v[eta_v is np.nan] = 1.0
-        eta_v[eta_v is np.inf] = 0.0
+        eta_v[np.isnan(eta_v)] = 1.0
+        eta_v[np.isinf(eta_v)] = 0.0
         # Save eta_v
         np.savetxt(eta_vh, eta_v)
 
     # Tag ta values to flux mesh    
     eta_vh.close()
     from pyne.mesh import IMeshTag
-    for tag in flux_mesh.mesh.getAllTags(voxel):
+    for tag in flux_mesh.mesh.getAllTags(voxel[2]):
         flux_mesh.mesh.destroyTag(tag, True)
     etavh_tag = IMeshTag(num_p_groups, float, mesh=flux_mesh, name='eta_vh')
     etavh_tag[:] = np.loadtxt(os.path.join(run_dir, 'step2_gts.txt'))
     # Save mesh. File name is step2_gts_<number of decay time + 1>.h5m to be
     # same as photon source file name. source_1.h5m >> step2_gts_1.h5m
-    flux_mesh.mesh.save("step2_gts_{0}.h5m".format(decay_time))
+    flux_mesh.mesh.save("step2_gts_{0}.h5m".format(decay_time+1))
     
     if clean:
         print("Deleting intermediate files for Step 2")
