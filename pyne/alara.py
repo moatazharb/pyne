@@ -25,7 +25,7 @@ except ImportError:
                   "Some aspects of the alara module may be incomplete.",
                   QAWarning)
 
-from pyne.mesh import Mesh, MeshError
+from pyne.mesh import Mesh, IMeshTag, MeshError
 from pyne.material import Material, MaterialLibrary, from_atom_frac
 from pyne import nucname
 from pyne.nucname import serpent, alara, znum, anum
@@ -1258,14 +1258,14 @@ def calc_gts(geom, meshtal, tally_number, Pmesh, num_p_groups, run_dir, clean):
     T_array = np.load(T)
 
     # Tag cell fractions to flux mesh
-    cell_fracs = discretize_geom(flux_mesh, num_rays=49, grid=True)
+    cell_fracs = discretize_geom(flux_mesh, num_rays=10)
     flux_mesh.tag_cell_fracs(cell_fracs)
     # Get tag handles of cell and cell_frac tags
     cell_tag = flux_mesh.mesh.getTagHandle('cell_number')
     cellfrac_tag = flux_mesh.mesh.getTagHandle('cell_fracs')
 
     # Get the decay time index from photon source file name
-    # source_1.h5m >> decay_time = 0
+    # source_1.h5m >> index of decay_time on T matrix = 0
     decay_time = int(Pmesh.split('/')[-1].split('.')[0][-1]) - 1
 
     # Create text files to store mesh voxels eta values
@@ -1273,7 +1273,7 @@ def calc_gts(geom, meshtal, tally_number, Pmesh, num_p_groups, run_dir, clean):
     # Loop over mesh voxels and calculate eta_v,h values
     for voxel in flux_mesh:
         # Get neutron flux values
-        voxel_flux = flux_tag[voxel[2]].reshape(num_n_groups, 1)
+        voxel_flux = flux_tag[voxel[2]].reshape(1, num_n_groups)
         # Get list of cells in mesh voxel
         cells = cell_tag[voxel[2]]
         # Get list of volume fractions of cells in the mesh voxel
@@ -1286,18 +1286,21 @@ def calc_gts(geom, meshtal, tally_number, Pmesh, num_p_groups, run_dir, clean):
         eta_v = np.zeros((1, num_p_groups))
         # loop over cells. vacancy is -1
         for cell in cells[cells >= 0]:
-            if not cell_mats[cell] in mat_names_raw:
+            if not cell_mats[cell] in mat_names_raw:  
+                # Maybe check density in case He is used as vacuum!
                 # Skip vacuum materials
                 continue
             # Get material name index for T
-            mat = mat_names.index(cell_mats[cell].split(":")[1].split("/")[0])
+            mat = mat_names_raw.index(cell_mats[cell]) #.split(":")[1].split("/")[0])
             # Get volume fraction of the cell in the mesh voxel
             vol_frac = cell_frac[cell]
             # Get T matrix for material. Shape is (num_n_groups, num_p_groups)
-            T_v = T_array[mat,decay_time,:,:].reshape(num_n_groups,
-                                                      num_p_groups)*vol_frac
+            # Reshaping [1, 1, num_n_groups, num_p_groups] array as a 2D array
+            # to do matrix multiplication by flux vector.
+            T_mat = T_array[mat,decay_time,:,:].reshape(num_n_groups,
+                                                      num_p_groups)
             # Calculate the photon source using T matrix and neutron flux
-            Psource_temp[0,:] += np.sum(T_v*voxel_flux, axis=0)
+            Psource_temp[0,:] += vol_frac*np.dot(voxel_flux, T_mat)
         # Calculate eta for voxel v    
         eta_v[0,:] = Psource_temp / voxel_photon
         eta_v[np.isnan(eta_v)] = 1.0
@@ -1307,14 +1310,14 @@ def calc_gts(geom, meshtal, tally_number, Pmesh, num_p_groups, run_dir, clean):
 
     # Tag ta values to flux mesh    
     eta_vh.close()
-    from pyne.mesh import IMeshTag
+    #from pyne.mesh import IMeshTag
     for tag in flux_mesh.mesh.getAllTags(voxel[2]):
         flux_mesh.mesh.destroyTag(tag, True)
     etavh_tag = IMeshTag(num_p_groups, float, mesh=flux_mesh, name='eta_vh')
     etavh_tag[:] = np.loadtxt(os.path.join(run_dir, 'step2_gts.txt'))
     # Save mesh. File name is step2_gts_<number of decay time + 1>.h5m to be
     # same as photon source file name. source_1.h5m >> step2_gts_1.h5m
-    flux_mesh.mesh.save("step2_gts_{0}.h5m".format(decay_time+1))
+    flux_mesh.mesh.save("step2_gts_{0}.h5m".format(decay_time + 1))
     
     if clean:
         print("Deleting intermediate files for Step 2")

@@ -64,16 +64,14 @@ step2:
     # Single pulse irradiation time [s].
     irr_time: 
     # Single decay time of interest [s].
-    decay_time:
-    # Perform GTS (spectrum) correction:
-    # Path to the photon source file produced using r2s step 2. This is the 
-    # photon source produced using an estimate of the neutron flux distribution 
-    # in the problem.
-    # File name should be source_<int>.h5m followed by the path to the meshtal 
-    # file and the tally number.
-    gts: source_1.h5m meshtal 14
+    decay_time: 
+    # Perform GTS spectrum correction (optional)
+    # If this correction is not needed, keep False, otherwise, replace with 
+    # inputs: 1) path to the photon source file produced using r2s step 2,
+    # 2) path to MCNP meshtal file, and 3) neutron flux mesh tally number.
+    # Example, source_1.h5m meshtal 14
+    gts: False
     
-
 # Calculate adjoint neutron source
 step3:
 
@@ -297,16 +295,19 @@ def step2(cfg1, cfg2, clean):
 
     # Set input values for T matrix spectrum correction
     gts_correction = False
-    if len(gts) == 3:
+    if gts:
+        print('Performing GTS "spectrum correction"')
         gts_correction = True
-        [Pmesh, meshtal, tally_number] = gts
+        Pmesh, meshtal, tally_number = gts
     else:
         print('Inputs to gts "Spectra correction" are insufficient!. \n'
               'Spectra correction of T matrix will not be performed.')
     
     # Define a flat, 175 group neutron spectrum, with magnitude 1E12 [n/s]
-    neutron_spectrum = [1]*175  # will be normalized
-    flux_magnitudes = [1.75E14] # 1E12*175
+    num_n_groups = 175
+    neutron_spectrum = [1]*num_n_groups  # will be normalized
+    flux_magnitude = 1.0E12
+    flux_magnitudes = [num_n_groups*flux_magnitude] # 1E12*175
 
     # Get materials from geometry file
     ml = MaterialLibrary(geom)
@@ -322,7 +323,8 @@ def step2(cfg1, cfg2, clean):
 
     # Perform spectra correction of the calculated T matrix
     if gts_correction:
-        calc_gts(geom, meshtal, int(tally_number), Pmesh, num_p_groups, run_dir, clean)
+        calc_gts(geom, meshtal, int(tally_number), Pmesh, num_p_groups,
+                 run_dir, clean)
 
 def main():
     """ 
