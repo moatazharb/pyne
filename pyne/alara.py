@@ -1231,8 +1231,7 @@ def calc_gts(geom, meshtal, tally_number, Pmesh, num_p_groups, run_dir, clean):
     load(geom)
     mat_lib = MaterialLibrary(geom)
     # Create a list of material names
-    mat_names_raw = list(m for m in mat_lib.keys())
-    mat_names = list(m.split(':')[1].split("/")[0] for m in mat_lib.keys())
+    mat_names = list(m for m in mat_lib.keys())
     cell_mats = cell_material_assignments(geom)
 
     # Load MCNP meshtal file
@@ -1286,19 +1285,19 @@ def calc_gts(geom, meshtal, tally_number, Pmesh, num_p_groups, run_dir, clean):
         eta_v = np.zeros((1, num_p_groups))
         # loop over cells. vacancy is -1
         for cell in cells[cells >= 0]:
-            if not cell_mats[cell] in mat_names_raw:  
+            if not cell_mats[cell] in mat_names:  
                 # Maybe check density in case He is used as vacuum!
                 # Skip vacuum materials
                 continue
             # Get material name index for T
-            mat = mat_names_raw.index(cell_mats[cell]) #.split(":")[1].split("/")[0])
+            mat = mat_names.index(cell_mats[cell])
             # Get volume fraction of the cell in the mesh voxel
             vol_frac = cell_frac[cell]
             # Get T matrix for material. Shape is (num_n_groups, num_p_groups)
             # Reshaping [1, 1, num_n_groups, num_p_groups] array as a 2D array
             # to do matrix multiplication by flux vector.
             T_mat = T_array[mat,decay_time,:,:].reshape(num_n_groups,
-                                                      num_p_groups)
+                                                        num_p_groups)
             # Calculate the photon source using T matrix and neutron flux
             Psource_temp[0,:] += vol_frac*np.dot(voxel_flux, T_mat)
         # Calculate eta for voxel v    
