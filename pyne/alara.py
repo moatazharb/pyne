@@ -1268,9 +1268,9 @@ def calc_gts(geom, meshtal, tally_number, Pmesh, num_p_groups, run_dir, clean):
     decay_time = int(Pmesh.split('/')[-1].split('.')[0][-1]) - 1
 
     # Create text files to store mesh voxels eta values
-    eta_vh = open(os.path.join(run_dir, 'step2_gts.txt'), 'w')
+    eta_vh = np.zeros((len(flux_mesh), num_p_groups))
     # Loop over mesh voxels and calculate eta_v,h values
-    for voxel in flux_mesh:
+    for i, voxel in enumerate(flux_mesh):
         # Get neutron flux values
         voxel_flux = flux_tag[voxel[2]].reshape(1, num_n_groups)
         # Get list of cells in mesh voxel
@@ -1282,12 +1282,11 @@ def calc_gts(geom, meshtal, tally_number, Pmesh, num_p_groups, run_dir, clean):
         voxel_photon = photon_tag[voxel[2]].reshape(1, num_p_groups)
         # Create temporary arrays to store photon source and eta values
         Psource_temp = np.zeros((1, num_p_groups))
-        eta_v = np.zeros((1, num_p_groups))
         # loop over cells. vacancy is -1
         for cell in cells[cells >= 0]:
-            if not cell_mats[cell] in mat_names:  
+            if not cell_mats[cell] in mat_names:
+                # Skip Vacuum materials
                 # Maybe check density in case He is used as vacuum!
-                # Skip vacuum materials
                 continue
             # Get material name index for T
             mat = mat_names.index(cell_mats[cell])
@@ -1295,25 +1294,23 @@ def calc_gts(geom, meshtal, tally_number, Pmesh, num_p_groups, run_dir, clean):
             vol_frac = cell_frac[cell]
             # Get T matrix for material. Shape is (num_n_groups, num_p_groups)
             # Reshaping [1, 1, num_n_groups, num_p_groups] array as a 2D array
-            # to do matrix multiplication by flux vector.
+            # to do matrix multiplication by flux vector. 
             T_mat = T_array[mat,decay_time,:,:].reshape(num_n_groups,
                                                         num_p_groups)
             # Calculate the photon source using T matrix and neutron flux
-            Psource_temp[0,:] += vol_frac*np.dot(voxel_flux, T_mat)
+            Psource_temp += np.dot(voxel_flux, T_mat)*vol_frac
+            
         # Calculate eta for voxel v    
-        eta_v[0,:] = Psource_temp / voxel_photon
-        eta_v[np.isnan(eta_v)] = 1.0
-        eta_v[np.isinf(eta_v)] = 0.0
-        # Save eta_v
-        np.savetxt(eta_vh, eta_v)
+        eta_vh[i, :] = Psource_temp / voxel_photon
+        eta_vh[np.isnan(eta_vh)] = 1.0
+        eta_vh[np.isinf(eta_vh)] = 0.0
 
-    # Tag ta values to flux mesh    
-    eta_vh.close()
+    # Tag ta values to flux mesh
     #from pyne.mesh import IMeshTag
     for tag in flux_mesh.mesh.getAllTags(voxel[2]):
         flux_mesh.mesh.destroyTag(tag, True)
     etavh_tag = IMeshTag(num_p_groups, float, mesh=flux_mesh, name='eta_vh')
-    etavh_tag[:] = np.loadtxt(os.path.join(run_dir, 'step2_gts.txt'))
+    etavh_tag[:] = eta_vh
     # Save mesh. File name is step2_gts_<number of decay time + 1>.h5m to be
     # same as photon source file name. source_1.h5m >> step2_gts_1.h5m
     flux_mesh.mesh.save("step2_gts_{0}.h5m".format(decay_time + 1))
