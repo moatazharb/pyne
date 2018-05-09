@@ -5,9 +5,10 @@ import yaml
 import argparse
 import numpy as np
 from pyne import nucname
+from pyne.nucname import name
 from pyne.mesh import Mesh, IMeshTag
 from pyne.bins import pointwise_collapse
-from pyne.material import MaterialLibrary
+from pyne.material import Material, MaterialLibrary
 from pyne.partisn import write_partisn_input, isotropic_vol_source
 from pyne.dagmc import discretize_geom, load, cell_material_assignments
 from pyne.alara import calc_eta
@@ -169,6 +170,18 @@ def step0(cfg1, cfg2, clean):
     ml = MaterialLibrary(geom)
     mats = list(ml.values())
 
+    eta_elements = True
+    if eta_elements:
+        # Calculate eta for each element in the material library
+        elements = []
+        for m, mat in enumerate(ml.keys()):
+            # Collapse elements in the material
+            mat_collapsed = mats[m].collapse_elements([])
+            element_list = mat_collapsed.comp.keys()
+            for element in element_list:
+                if not element in elements:
+                    elements.append(element)
+                    mats.append(Material({element: 1.0}).expand_elements())
     # Perform SNILB check and calculate eta
     run_dir = 'step0'
     eta = calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
@@ -181,6 +194,9 @@ def step0(cfg1, cfg2, clean):
     with open('step0_eta.txt', 'w') as f:
         for m, mat in enumerate(ml.keys()):
             f.write(mat.split(':')[1] + ', eta=' + str(eta[m][0]) + '\n')
+        mat_num = len(ml.keys())    
+        for m, mat in enumerate(elements.keys()):
+            f.write(name(mat) + ', eta=' + str(eta[m+mat_num][0]) + '\n')
 
 def step1(cfg1):
     """ 
