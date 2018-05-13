@@ -182,7 +182,7 @@ def step0(cfg1, cfg2, clean):
                 if not element in elements:
                     elements.append(element)
                     mat_element = Material({element: 1.0})
-                    mat_element.metadata['name'] = 'mat:%s' %name(element)
+                    mat_element.name = 'mat:%s' %name(element)
                     mat_element.density = 1.0
                     mats.append(mat_element)
     # Perform SNILB check and calculate eta
@@ -197,9 +197,11 @@ def step0(cfg1, cfg2, clean):
     with open('step0_eta.txt', 'w') as f:
         for m, mat in enumerate(ml.keys()):
             f.write(mat.split(':')[1] + ', eta=' + str(eta[m][0]) + '\n')
-        mat_num = len(ml.keys())
-        for m, mat in enumerate(elements):
-            f.write(name(mat) + ', eta=' + str(eta[m+mat_num][0]) + '\n')
+        # Write eta value per element in the material library    
+        if eta_elements:
+            mat_count = len(ml.keys())
+            for m, mat in enumerate(elements):
+                f.write(name(mat) + ', eta=' + str(eta[m+mat_count][0]) + '\n')
 
 def step1(cfg1):
     """ 
