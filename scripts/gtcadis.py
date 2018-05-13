@@ -2,16 +2,14 @@
 
 import io
 import yaml
-import shutil
 import argparse
-import subprocess
 import numpy as np
 from pyne import nucname
-from pyne.mesh import Mesh
+from pyne.mesh import Mesh, IMeshTag
 from pyne.bins import pointwise_collapse
-from pyne.material import MaterialLibrary
+from pyne.material import Material, MaterialLibrary
 from pyne.partisn import write_partisn_input, isotropic_vol_source
-from pyne.dagmc import  discretize_geom, load
+from pyne.dagmc import discretize_geom, load, cell_material_assignments
 from pyne.alara import calc_eta, calc_T, calc_gts
 
 
@@ -71,7 +69,7 @@ step2:
     # 2) path to MCNP meshtal file, and 3) neutron flux mesh tally number.
     # Example, source_1.h5m meshtal 14
     gts: False
-    
+
 # Calculate adjoint neutron source
 step3:
 
@@ -168,26 +166,52 @@ def step0(cfg1, cfg2, clean):
     num_p_groups = cfg1['p_groups']
     
     # Define a flat, 175 group neutron spectrum, with magnitude 1E12 [n/s]
-    neutron_spectrum = [1]*175  # will be normalized
-    flux_magnitudes = [1.75E14] # 1E12*175
+    num_n_groups = 175
+    neutron_spectrum = [1]*num_n_groups # will be normalized
+    flux_magnitude = 1.0E12
+    flux_magnitudes = [flux_magnitude * num_n_groups] # 1E12*175
 
     # Get materials from geometry file
     ml = MaterialLibrary(geom)
     mats = list(ml.values())
 
+    eta_elements = True
+    if eta_elements:
+        # Calculate eta for each element in the material library
+        elements = []
+        for m, mat in enumerate(ml.keys()):
+            # Collapse elements in the material
+            mat_collapsed = mats[m].collapse_elements([])
+            element_list = mat_collapsed.comp.keys()
+            for element in element_list:
+                if not element in elements:
+                    elements.append(element)
+                    mat_element = Material({element: 1.0})
+                    mat_element.metadata['name'] = 'mat:%s' %nucname.name(element)
+                    mat_element.density = 1.0
+                    mats.append(mat_element)
+    
     # Perform SNILB check and calculate eta
     run_dir = 'step0'
-    eta = calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
-                   decay_times, num_p_groups, run_dir, clean)
+    eta, eta_sum = calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes,
+                            irr_times, decay_times, num_p_groups, run_dir, clean)
     np.set_printoptions(threshold=np.nan)
     
-    # Save numpy array
+    # Save eta arrays to numpy arrays
     np.save('step0_eta.npy', eta)
-    # Write a list of material name and eta value to a text file
+    np.save('step0_eta_sum.npy', eta_sum)
+    # Write a list of material names and eta values to a text file
     with open('step0_eta.txt', 'w') as f:
         for m, mat in enumerate(ml.keys()):
-            f.write(mat.split(':')[1] + ', eta=' + str(eta[m][0]) + '\n')
-
+            f.write('{0}, eta={1} \n'.format(mat.split(':')[1], eta_sum[m, :]))
+        # Write eta value per element in the material library
+        if eta_elements:
+            f.write('------ \nTotal eta value per element: \n------ \n')
+            mat_count = len(ml.keys())
+            for m, mat in enumerate(elements):
+                f.write('{0}, eta={1} \n'.format(nucname.name(mat), eta_sum[m +
+                                                 mat_count, :]))
+            
 def step1(cfg1):
     """ 
     This function writes the PARTISN input file for the adjoint photon transport.   
@@ -223,16 +247,16 @@ def step1(cfg1):
 
     # Generate 42 photon energy bins [eV]
     #  First bin has been replaced with 1 for log interpolation
-    photon_bins = np.array([1e-6, 0.01, 0.02, 0.03, 0.045, 0.06, 0.07, 0.075, 
-                            0.1, 0.15, 0.2, 0.3, 0.4, 0.45, 0.51, 0.512, 0.6, 
-                            0.7, 0.8, 1, 1.33, 1.34, 1.5, 1.66, 2, 2.5, 3, 3.5, 
-                            4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 10, 12, 14, 20, 
+    photon_bins = np.array([1e-6, 0.01, 0.02, 0.03, 0.045, 0.06, 0.07, 0.075,
+                            0.1, 0.15, 0.2, 0.3, 0.4, 0.45, 0.51, 0.512, 0.6,
+                            0.7, 0.8, 1, 1.33, 1.34, 1.5, 1.66, 2, 2.5, 3, 3.5,
+                            4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 10, 12, 14, 20,
                             30, 50])
     # ICRP 74 flux-to-dose conversion factors in pico-Sv/s per photon flux
-    de = np.array([0.01, 0.015, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.1, 
+    de = np.array([0.01, 0.015, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.1,
                    0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1, 2, 4, 6, 8, 10])
     df = np.array([0.0485, 0.1254, 0.205, 0.2999, 0.3381, 0.3572, 0.378, 0.4066,
-                   0.4399, 0.5172, 0.7523, 1.0041, 1.5083, 1.9958, 2.4657, 2.9082, 
+                   0.4399, 0.5172, 0.7523, 1.0041, 1.5083, 1.9958, 2.4657, 2.9082,
                    3.7269, 4.4834, 7.4896, 12.0153, 15.9873, 19.9191, 23.76])
     # Convert to Sv/s per photon FLUX 
     pico = 1.0e-12 
@@ -270,7 +294,7 @@ def step1(cfg1):
         data_hdf5path="/materials",
         nuc_hdf5path="/nucid",
         fine_per_coarse=1)
-        
+
 def step2(cfg1, cfg2, clean):
     """
     This function calculates the T matrix for each material, neutron group, 
@@ -296,12 +320,11 @@ def step2(cfg1, cfg2, clean):
     # Set input values for T matrix spectrum correction
     gts_correction = False
     if gts:
-        print('Performing GTS "spectrum correction"')
         gts_correction = True
         Pmesh, meshtal, tally_number = gts
     else:
         print('Inputs to gts "Spectra correction" are insufficient!. \n'
-              'Spectra correction of T matrix will not be performed.')
+              'Spectra correction of T matrix will not be calculated.')
     
     # Define a flat, 175 group neutron spectrum, with magnitude 1E12 [n/s]
     num_n_groups = 175
@@ -323,8 +346,9 @@ def step2(cfg1, cfg2, clean):
 
     # Perform spectra correction of the calculated T matrix
     if gts_correction:
-        calc_gts(geom, meshtal, int(tally_number), Pmesh, num_p_groups,
-                 run_dir, clean)
+        print('Performing GTS "spectrum correction"')
+        calc_gts(geom, meshtal, int(tally_number), Pmesh, num_p_groups, run_dir,
+                 clean)
 
 def main():
     """ 
