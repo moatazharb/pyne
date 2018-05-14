@@ -1189,7 +1189,7 @@ def calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
     return eta, eta_sum
     
 def calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
-             decay_times, num_p_groups, run_dir, clean):
+           decay_times, num_p_groups, run_dir, clean):
     """
     Function that returns T matrix for each material, neutron group, 
     photon group, and decay time.
@@ -1219,7 +1219,7 @@ def calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
     ----------
     T : numpy.ndarray
         T matrix for each material listed.  This is a 4D array
-        [mat, decay_time, n_group, p_group].
+        [mat, decay_time, num_n_groups, num_p_groups].
     """
     num_n_groups = len(neutron_spectrum)
     num_mats = len(mats)
@@ -1258,7 +1258,7 @@ def calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
 
 def calc_gts(geom, meshtal, tally_number, Pmesh, num_p_groups, run_dir, clean):
     """
-    Function that performs GT-CADIS spectrum correction
+    Function that performs GT-CADIS spectrum correction 'GTS'
 
     Parameters:
     ----------
@@ -1278,7 +1278,6 @@ def calc_gts(geom, meshtal, tally_number, Pmesh, num_p_groups, run_dir, clean):
     clean : bool
         If True, remove run_dir
     """
-    print('Calculating spectra correction values "eta_vh" for mesh')
     # Create run_dir
     if not os.path.exists(run_dir):
         os.makedirs(run_dir)
@@ -1315,7 +1314,7 @@ def calc_gts(geom, meshtal, tally_number, Pmesh, num_p_groups, run_dir, clean):
     T_array = np.load(T)
 
     # Tag cell fractions to flux mesh
-    cell_fracs = discretize_geom(n_flux_mesh, num_rays=49)
+    cell_fracs = discretize_geom(n_flux_mesh, num_rays=10)
     n_flux_mesh.tag_cell_fracs(cell_fracs)
     # Get tag handles of cell and cell_frac tags
     cell_tag = n_flux_mesh.mesh.getTagHandle('cell_number')
@@ -1325,8 +1324,8 @@ def calc_gts(geom, meshtal, tally_number, Pmesh, num_p_groups, run_dir, clean):
     # source_1.h5m >> index of decay_time on T matrix = 0
     decay_time = int(Pmesh.split('/')[-1].split('.')[0][-1]) - 1
 
-    # Create text files to store mesh voxels eta values
-    eta_vh = np.zeros((len(n_flux_mesh), num_p_groups))
+    # Create array to store mesh voxels eta values
+    eta_vh = np.zeros(shape=(len(n_flux_mesh), num_p_groups))
     # Loop over mesh voxels and calculate eta_v,h values
     for i, voxel in enumerate(n_flux_mesh):
         # Get neutron flux values
@@ -1338,25 +1337,22 @@ def calc_gts(geom, meshtal, tally_number, Pmesh, num_p_groups, run_dir, clean):
         cell_frac = dict(zip(cells, vol_fracs))
         # Get photon emission density from photon source mesh
         voxel_p_source = p_source_tag[voxel[2]].reshape(1, num_p_groups)
-        # Create temporary arrays to store photon source and eta values
-        Psource_temp = np.zeros((1, num_p_groups))
+        # Create temporary arrays to store photon source
+        Psource_temp = np.zeros(shape=(1, num_p_groups))
         # loop over cells. vacancy is -1
         for cell in cells[cells >= 0]:
-            if not cell_mats[cell] in mat_names:
-                # Skip Vacuum materials
-                # Maybe check density in case He is used as vacuum!
-                continue
-            # Get material name index for T
-            mat = mat_names.index(cell_mats[cell])
-            # Get volume fraction of the cell in the mesh voxel
-            vol_frac = cell_frac[cell]
-            # Get T matrix for material. Shape is (num_n_groups, num_p_groups)
-            # Reshaping [1, 1, num_n_groups, num_p_groups] array as a 2D array
-            # to do matrix multiplication by flux vector. 
-            T_mat = T_array[mat, decay_time, :, :].reshape(num_n_groups,
-                                                           num_p_groups)
-            # Calculate the photon source using T matrix and neutron flux
-            Psource_temp += np.dot(voxel_flux, T_mat)*vol_frac
+            if cell_mats[cell] in mat_names:
+                # Get material name index for T
+                mat = mat_names.index(cell_mats[cell])
+                # Get volume fraction of the cell in the mesh voxel
+                vol_frac = cell_frac[cell]
+                # Get T matrix for mat. Shape is (num_n_groups, num_p_groups)
+                # Reshaping [1, 1, num_n_groups, num_p_groups] array as a 2D array
+                # to do matrix multiplication by flux vector. 
+                T_mat = T_array[mat, decay_time, :, :].reshape(num_n_groups,
+                                                               num_p_groups)
+                # Calculate the photon source using T matrix and neutron flux
+                Psource_temp += np.dot(voxel_n_flux, T_mat)*vol_frac
             
         # Calculate eta for voxel v
         eta_vh[i, :] = Psource_temp / voxel_p_source
