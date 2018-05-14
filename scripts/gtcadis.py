@@ -315,13 +315,13 @@ def step2(cfg1, cfg2, clean):
     irr_times = str(cfg2['irr_time']).split(' ')
     decay_times = str(cfg2['decay_time']).split(' ')
     num_p_groups = cfg1['p_groups']
-    gts = str(cfg2['gts']).split(' ')
+    gts = cfg2['gts']
 
     # Set input values for T matrix spectrum correction
     gts_correction = False
     if gts:
         gts_correction = True
-        Pmesh, meshtal, tally_number = gts
+        Pmesh, meshtal, tally_number = str(gts).split(' ')
     else:
         print('Inputs to gts "Spectra correction" are insufficient!. \n'
               'Spectra correction of T matrix will not be calculated.')

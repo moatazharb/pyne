@@ -26,7 +26,7 @@ except ImportError:
                   "Some aspects of the alara module may be incomplete.",
                   QAWarning)
 
-from pyne.mesh import Mesh, MeshError
+from pyne.mesh import Mesh, IMeshTag, MeshError
 from pyne.material import Material, MaterialLibrary, from_atom_frac
 from pyne import nucname
 from pyne.nucname import serpent, alara, znum, anum
@@ -1244,6 +1244,9 @@ def calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
         i = 0
         for line in f.readlines():
             l = line.split()
+            # Need to stop reading before beginning of elements results
+            if i == num_mats * num_decay_times * (num_n_groups + 2):
+                break
             if l[0] == "TOTAL" and l[1] != "shutdown":
                 m = int(np.floor(float(i)/((num_n_groups+2)*num_decay_times)))
                 dt = i % num_decay_times
