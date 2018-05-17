@@ -1255,3 +1255,78 @@ def calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
         print("Deleting intermediate files for Step 0")
         shutil.rmtree(run_dir)  
     return eta
+    
+def calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
+           decay_times, num_p_groups, p_bins, run_dir, clean):
+    """
+    Function that returns T matrix for each material, decay time, neutron group, 
+    and photon group.
+    
+    Parameters
+    ----------
+    data_dir : str
+        Path to directory containing nuclib and fendl files
+    mats : list
+        List of PyNE material objects of materials in the geometry
+    neutron_spectrum : numpy array
+        Neutron energy spectrum (length is equal to number of n energy groups)
+    flux_magnitudes : numpy array
+        Magnitude of flux in each neutron energy group
+    irr_times : list
+        Irradiation times [s]
+    decay_times : list
+        Decay times [s]
+    num_p_groups : int
+        The number of photon energy groups for ALARA calculation
+    run_dir: str
+        Path to write ALARA input and output files    
+    clean : bool
+        If True, remove run_dir
+        
+    Returns
+    ----------
+    T : numpy.ndarray
+        T matrix for each material listed.  This is a 4D array
+        [num_mats, decay_time, num_n_groups, num_p_groups].
+    """
+    num_n_groups = len(neutron_spectrum)
+    num_mats = len(mats)
+    num_decay_times = len(decay_times)
+                         
+    # Run ALARA only if photon source from step 0 doesn't exist
+    # otherwise, parse the existing photon source
+    phtn_src_file = 'step0_phtn_src'
+    if not os.path.exists(phtn_src_file):
+        # Make run_dir and run ALARA
+        if not os.path.exists(run_dir):
+            os.makedirs(run_dir)
+        phtn_src_file = _gt_alara(data_dir, mats, neutron_spectrum,
+                                  flux_magnitudes, irr_times, decay_times,
+                                  num_p_groups, p_bins, run_dir)
+    else:
+        print('Using existing ALARA photon source file, step0_phtn_src, from Step 0.')
+        
+    # Parse ALARA output and calculate T matrix
+    T = np.zeros(shape=(num_mats, num_decay_times, num_n_groups, num_p_groups))
+    with open(phtn_src_file, 'r') as f:
+        i = 0
+        for line in f.readlines():
+            l = line.split()
+            # Need to stop reading before beginning of elements results
+            if i == num_mats * num_decay_times * (num_n_groups + 2):
+                break
+            if l[0] == "TOTAL" and l[1] != "shutdown":
+                row = np.array([float(x) for x in l[3:]])
+                # Material index will change every (num_n_groups + 2) * num_decay_times
+                entries_per_material = (num_n_groups + 2) * num_decay_times
+                m = int(np.floor(float(i) / entries_per_material))
+                dt = i % num_decay_times
+                n = int(np.floor(i/float(num_decay_times))) % (num_n_groups + 2)
+                if (n != num_n_groups) and (n != num_n_groups + 1):
+                    T[m, dt, n, :] = row / (neutron_spectrum[n] * flux_magnitudes[0])
+                i += 1
+  
+    if clean:
+        print("Deleting intermediate files for Step 2")
+        shutil.rmtree(run_dir)
+    return T
