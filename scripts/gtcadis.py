@@ -11,7 +11,7 @@ from pyne.bins import pointwise_collapse
 from pyne.material import Material, MaterialLibrary
 from pyne.partisn import write_partisn_input, isotropic_vol_source
 from pyne.dagmc import discretize_geom, load, cell_material_assignments
-from pyne.alara import calc_eta
+from pyne.alara import calc_eta, calc_T
 
 
 config_filename = 'config.yml'
@@ -324,6 +324,47 @@ def step1(cfg, cfg1):
         nuc_hdf5path="/nucid",
         fine_per_coarse=1)
 
+def step2(cfg, cfg2):
+    """
+    This function calculates the T matrix for each material, neutron group, 
+    photon group, and decay time.
+    
+    Parameters
+    ----------
+    cfg : dictionary
+        User input for 'general' from the config.yml file
+    cfg2: dictionary
+        User input for step 2 from config.yml file
+    """
+    # Get user input from config file
+    geom = cfg2['n_geom_file']
+    data_dir = cfg2['data_dir']
+    irr_times = str(cfg2['irr_time']).split(' ')
+    decay_times = str(cfg2['decay_time']).split(' ')
+    num_p_groups = cfg['p_groups']
+    num_n_groups = cfg['n_groups']
+    clean = cfg['clean']
+ 
+    # Define a flat, 175 group neutron spectrum, with magnitude 1E12 [n/s]
+    neutron_spectrum = np.ones(num_n_groups) # will be normalized
+    flux_magnitude = 1.0E12
+    flux_magnitudes = np.array([flux_magnitude * num_n_groups]) # 1E12*175
+    
+    # Get materials from geometry file
+    mat_lib = MaterialLibrary(geom)
+    mats = list(mat_lib.values())
+
+    # Calculate T matrix
+    run_dir = 'step2'
+    # Get the photon energy bin structure
+    p_bins = _get_p_bins(num_p_groups)
+    T = calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
+               decay_times, num_p_groups, p_bins, run_dir, clean)
+    np.set_printoptions(threshold=np.nan)
+    
+    # Save numpy array
+    np.save('step2_T.npy', T)
+
 def main():
     """ 
     This function manages the setup and steps 1-5 for the GT-CADIS workflow.
@@ -335,12 +376,14 @@ def main():
                   'filled in by the user.\n')
     step0_help = 'Performs SNILB criteria check.'
     step1_help = 'Creates the PARTISN input file for adjoint photon transport.'
+    step2_help = 'Calculates T matrix for each material in the geometry.'
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help=gtcadis_help, dest='command')
 
     setup_parser = subparsers.add_parser('setup', help=setup_help)
     step0_parser = subparsers.add_parser('step0', help=step0_help)
     step1_parser = subparsers.add_parser('step1', help=step1_help)
+    step2_parser = subparsers.add_parser('step2', help=step2_help)
 
     args, other = parser.parse_known_args()
     if args.command == 'setup':
@@ -354,6 +397,9 @@ def main():
 
     elif args.command == 'step1':
         step1(cfg['general'], cfg['step1'])
+        
+    elif args.command == 'step2':
+        step2(cfg['general'], cfg['step2'])    
 
 if __name__ == '__main__':
     main()
