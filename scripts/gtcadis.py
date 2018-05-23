@@ -201,21 +201,19 @@ def step0(cfg, cfg2):
     mat_lib = MaterialLibrary(geom)
     mats = list(mat_lib.values())
 
-    eta_elements = True
-    if eta_elements:
-        # Calculate eta for each element in the material library
-        elements = Set([ ])
-        for m, mat in enumerate(mat_lib.keys()):
-            # Collapse elements in the material
-            mat_collapsed = mats[m].collapse_elements([])
-            element_list = mat_collapsed.comp.keys()
-            elements.update(element_list)
-        # Create PyNE material object per elements    
-        for element in elements:
-            mat_element = Material({element: 1.0})
-            mat_element.metadata['name'] = 'mat:%s' %nucname.name(element)
-            mat_element.density = 1.0
-            mats.append(mat_element)
+    # Create a list of elements in the material library
+    elements = Set([ ])
+    for m, mat in enumerate(mat_lib.keys()):
+        # Collapse elements in the material
+        mat_collapsed = mats[m].collapse_elements([])
+        element_list = mat_collapsed.comp.keys()
+        elements.update(element_list)
+    # Create PyNE material object for each element    
+    for element in elements:
+        mat_element = Material({element: 1.0})
+        mat_element.metadata['name'] = 'mat:%s' %nucname.name(element)
+        mat_element.density = 1.0
+        mats.append(mat_element)
     
     # Perform SNILB check and calculate eta
     run_dir = 'step0'
@@ -223,21 +221,18 @@ def step0(cfg, cfg2):
     p_bins = _get_p_bins(num_p_groups)
     eta = calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
                    decay_times, num_p_groups, p_bins, run_dir, clean)
-    np.set_printoptions(threshold=np.nan)
     
     # Save eta arrays to numpy arrays
     np.save('step0_eta.npy', eta)
     # Write a list of material names and eta values to a text file
     with open('step0_eta.txt', 'w') as f:
         for m, mat in enumerate(mat_lib.keys()):
-            f.write('{0}, eta={1} \n'.format(mat.split(':')[1], eta[m, :, -1]))
+            f.write('{0}, eta={1} \n'.format(mat, eta[m, :, -1]))
         # Write eta value per element in the material library
-        if eta_elements:
-            f.write('------ \nTotal eta value per element: \n------ \n')
-            mat_count = len(mat_lib.keys())
-            for m, mat in enumerate(elements):
-                f.write('{0}, eta={1} \n'.format(nucname.name(mat), eta[m + mat_count,
-                                                                        :, -1]))
+        f.write('------ \nEta value per element: \n------ \n')
+        mat_count = len(mat_lib.keys())
+        for m, mat in enumerate(elements):
+            f.write('{0}, eta={1} \n'.format(nucname.name(mat), eta[m + mat_count, :, -1]))
             
 def step1(cfg, cfg1):
     """ 
@@ -337,13 +332,13 @@ def step2(cfg, cfg2):
         User input for step 2 from config.yml file
     """
     # Get user input from config file
+    clean = cfg['clean']
+    num_p_groups = cfg['p_groups']
+    num_n_groups = cfg['n_groups']
     geom = cfg2['n_geom_file']
     data_dir = cfg2['data_dir']
     irr_times = str(cfg2['irr_time']).split(' ')
     decay_times = str(cfg2['decay_time']).split(' ')
-    num_p_groups = cfg['p_groups']
-    num_n_groups = cfg['n_groups']
-    clean = cfg['clean']
  
     # Define a flat, 175 group neutron spectrum, with magnitude 1E12 [n/s]
     neutron_spectrum = np.ones(num_n_groups) # will be normalized
@@ -360,7 +355,6 @@ def step2(cfg, cfg2):
     p_bins = _get_p_bins(num_p_groups)
     T = calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
                decay_times, num_p_groups, p_bins, run_dir, clean)
-    np.set_printoptions(threshold=np.nan)
     
     # Save numpy array
     np.save('step2_T.npy', T)
@@ -370,16 +364,15 @@ def main():
     This function manages the setup and steps 1-5 for the GT-CADIS workflow.
     """
     gtcadis_help = ('This script automates the GT-CADIS process of producing \n'
-                    'variance reduction parameters to optimize the neutron \n'
-                    'transport step of the Rigorous 2-Step (R2S) method.\n')
-    setup_help = ('Prints the file "config.yml" to be\n'
-                  'filled in by the user.\n')
-    step0_help = 'Performs SNILB criteria check.'
-    step1_help = 'Creates the PARTISN input file for adjoint photon transport.'
-    step2_help = 'Calculates T matrix for each material in the geometry.'
+                   'variance reduction parameters to optimize the neutron \n'
+                   'transport step of the Rigorous 2-Step (R2S) method.\n')
+    setup_help = ('Prints the file "config.yml" to be filled in by the user.\n')
+    step0_help = ('Performs SNILB criteria check.')
+    step1_help = ('Creates the PARTISN input file for adjoint photon transport.')
+    step2_help = ('Calculates T matrix for each material in the geometry.')
+    
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help=gtcadis_help, dest='command')
-
     setup_parser = subparsers.add_parser('setup', help=setup_help)
     step0_parser = subparsers.add_parser('step0', help=step0_help)
     step1_parser = subparsers.add_parser('step1', help=step1_help)
