@@ -886,11 +886,14 @@ def _find_phsrc_dc(idc, phtn_src_dc):
     else:
         # the idc doesn't exist in phtn_src_dc, convert the unit to `s`,
         idc_s = _convert_unit_to_s(idc)
-        phtn_src_dc_s = []
         for i, dc in enumerate(phtn_src_dc):
+            if dc == 'shutdown':
+                continue
             dc_s = _convert_unit_to_s(dc)
-            if (abs(idc_s - dc_s)/dc_s) < 1e-6:
-                return phtn_src_dc[i]
+            if idc_s == dc_s:
+                return dc
+            elif dc_s != 0.0 and (abs(idc_s - dc_s)/dc_s) < 1e-6:
+                return dc
         raise ValueError('Decay time {0} not found in phtn_src file'.format(idc)) 
 
 def _gt_normalize(neutron_spectrum):
