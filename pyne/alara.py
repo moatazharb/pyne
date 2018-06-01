@@ -1261,7 +1261,7 @@ def calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
     if clean:
         print("Deleting intermediate files for Step 0")
         shutil.rmtree(run_dir)  
-    return eta
+    return eta, zero, tot
     
 def calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
            decay_times, num_p_groups, p_bins, run_dir, clean):

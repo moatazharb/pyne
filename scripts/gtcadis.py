@@ -219,20 +219,24 @@ def step0(cfg, cfg2):
     run_dir = 'step0'
     # Get the photon energy bin structure
     p_bins = _get_p_bins(num_p_groups)
-    eta = calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
+    eta, zero, tot = calc_eta(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
                    decay_times, num_p_groups, p_bins, run_dir, clean)
     
     # Save eta arrays to numpy arrays
     np.save('step0_eta.npy', eta)
+    np.save('step0_zero.npy', zero)
     # Write a list of material names and eta values to a text file
     with open('step0_eta.txt', 'w') as f:
         for m, mat in enumerate(mat_lib.keys()):
-            f.write('{0}, eta={1} \n'.format(mat, eta[m, :, -1]))
+            f.write('{}, eta={}, bgrd={:0.6E}, tot={:0.6E} \n'.format(mat, eta[m, :, -1], float(zero[m, :, -1]),
+                                                                      float(tot[m, :, -1])))
         # Write eta value per element in the material library
         f.write('------ \nEta value per element: \n------ \n')
         mat_count = len(mat_lib.keys())
         for m, mat in enumerate(elements):
-            f.write('{0}, eta={1} \n'.format(nucname.name(mat), eta[m + mat_count, :, -1]))
+            f.write('{}, eta={}, bgrd={:0.6E}, tot={:0.6E} \n'.format(nucname.name(mat), eta[m + mat_count, :, -1],
+                                                                      float(zero[m + mat_count, :, -1]),
+                                                                      float(tot[m + mat_count, :, -1])))
             
 def step1(cfg, cfg1):
     """ 
