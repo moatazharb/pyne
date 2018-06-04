@@ -11,7 +11,7 @@ from pyne.bins import pointwise_collapse
 from pyne.material import Material, MaterialLibrary
 from pyne.partisn import write_partisn_input, isotropic_vol_source
 from pyne.dagmc import discretize_geom, load, cell_material_assignments
-from pyne.alara import calc_eta, calc_T
+from pyne.alara import calc_eta, calc_T, calc_gts
 
 
 config_filename = 'config.yml'
@@ -66,6 +66,12 @@ step2:
     irr_time: 
     # Single decay time of interest [s].
     decay_time: 
+    # Perform GTS spectrum correction (optional)
+    # If this correction is not needed, keep False, otherwise, replace with 
+    # inputs: 1) path to the photon source file produced using r2s step 2,
+    # 2) path to MCNP meshtal file, and 3) neutron flux mesh tally number.
+    # Example, source_1.h5m meshtal 14
+    gts: False
 
 # Calculate adjoint neutron source
 step3:
@@ -362,6 +368,21 @@ def step2(cfg, cfg2):
     
     # Save numpy array
     np.save('step2_T.npy', T)
+
+    gts = cfg2['gts']
+    gts_correction = False
+    if gts:
+        gts_correction = True
+        Pmesh, meshtal, tally_number = str(gts).split(' ')
+    else:
+        print('Inputs to gts "Spectra correction" are insufficient!. \n'
+              'Spectra correction of T matrix will not be calculated.')
+
+    # Perform spectra correction of the calculated T matrix
+    if gts_correction:
+        print('Calculating GTS "spectrum correction".')
+        calc_gts(geom, meshtal, int(tally_number), Pmesh, num_p_groups, run_dir,
+                 clean)
 
 def main():
     """ 
