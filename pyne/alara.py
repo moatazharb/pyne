@@ -1333,7 +1333,7 @@ def calc_T(data_dir, mats, neutron_spectrum, flux_magnitudes, irr_times,
                 dt = i % num_decay_times
                 n = int(np.floor(i/float(num_decay_times))) % (num_n_groups + 2)
                 if (n != num_n_groups) and (n != num_n_groups + 1):
-                    T[m, dt, n, :] = row / (neutron_spectrum[n] * flux_magnitudes[0])
+                    T[m, dt, n, :] = row / neutron_spectrum[n]
                 i += 1
   
     if clean:

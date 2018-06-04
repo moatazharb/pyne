@@ -199,9 +199,9 @@ def step0(cfg, cfg2):
     decay_times = str(cfg2['decay_time']).split(' ')
     
     # Define a flat, 175 group neutron spectrum, with magnitude 1E12 [n/s]
-    neutron_spectrum = np.ones(num_n_groups) # will be normalized
-    flux_magnitude = 1.0E12
-    flux_magnitudes = np.array([flux_magnitude * num_n_groups]) # 1E12*175
+    group_flux_magnitude = 1.0E12
+    neutron_spectrum = group_flux_magnitude * np.ones(num_n_groups)
+    flux_magnitudes = np.array([np.sum(neutron_spectrum)])
 
     # Get materials from geometry file
     mat_lib = MaterialLibrary(geom)
@@ -351,10 +351,10 @@ def step2(cfg, cfg2):
     decay_times = str(cfg2['decay_time']).split(' ')
  
     # Define a flat, 175 group neutron spectrum, with magnitude 1E12 [n/s]
-    neutron_spectrum = np.ones(num_n_groups) # will be normalized
-    flux_magnitude = 1.0E12
-    flux_magnitudes = np.array([flux_magnitude * num_n_groups]) # 1E12*175
-    
+    group_flux_magnitude = 1.0E12
+    neutron_spectrum = group_flux_magnitude * np.ones(num_n_groups)
+    flux_magnitudes = np.array([np.sum(neutron_spectrum)])
+                
     # Get materials from geometry file
     mat_lib = MaterialLibrary(geom)
     mats = list(mat_lib.values())
