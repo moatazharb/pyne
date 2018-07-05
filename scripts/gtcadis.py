@@ -213,7 +213,7 @@ def step0(cfg, cfg2):
     # Copy phtn_src file to main directory to be used for Step 2
     shutil.copy(psrc_file, 'step0_phtn_src')
 
-    # Perform SNILB check and calculate eta for each element in the material library
+    # Create a list of unique elements in the geometry
     elements = Set([ ])
     for mat in mats:
         # Collapse elements in the material
@@ -228,7 +228,7 @@ def step0(cfg, cfg2):
         mat_element.metadata['name'] = mat_element_name
         mat_element.density = 1.0
         # Add element to the material library
-        element_lib[mat_element_name] = mat_element
+        element_lib[mat_element_name] = mat_element.expand_elements()
     # Add elements to mats    
     elements = element_lib.items()
     num_elements = len(elements)
@@ -240,7 +240,7 @@ def step0(cfg, cfg2):
     eta_element, psrc_file = calc_eta(data_dir, elements, num_elements, neutron_spectrum, num_n_groups,
                                       irr_time, decay_times, p_bins, num_p_groups, run_dir)
     np.set_printoptions(threshold=np.nan)
-    
+
     # Save eta arrays to numpy arrays
     np.save('step0_eta.npy', eta)
     np.save('step0_eta_element.npy', eta_element)
@@ -340,11 +340,11 @@ def step1(cfg, cfg1):
         data_hdf5path="/materials",
         nuc_hdf5path="/nucid",
         fine_per_coarse=1)
-        
+               
 def step2(cfg, cfg2):
     """
-    This function calculates the T matrix for each material, neutron group, 
-    photon group, and decay time.
+    This function calculates the T matrix; T values per material, neutron group, photon group, 
+    and decay time.
     
     Parameters
     ----------
@@ -374,8 +374,7 @@ def step2(cfg, cfg2):
     # Calculate T matrix
     run_dir = 'step2'
     if not os.path.exists(run_dir):
-        os.makedirs(run_dir)
-                    
+        os.makedirs(run_dir)                
     # Get the photon energy bin structure
     p_bins = _get_p_bins(num_p_groups)
     T = calc_T(data_dir, mats, num_mats, neutron_spectrum, num_n_groups, irr_time, decay_times,
@@ -397,7 +396,7 @@ def main():
     setup_help = ('Prints the file "config.yml" to be filled in by the user.\n')
     step0_help = ('Performs SNILB criteria check.')
     step1_help = ('Creates the PARTISN input file for adjoint photon transport.')
-    step2_help = ('Calculates T matrix for each material in the geometry.')
+    step2_help = ('Calculates T matrix for materials in the geometry.')
     
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help=gtcadis_help, dest='command')
