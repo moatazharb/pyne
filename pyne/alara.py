@@ -1284,8 +1284,8 @@ def calc_T(data_dir, mats, num_mats, neutron_spectrum, num_n_groups, irr_time, d
                 i += 1
 
     # Calculate T matrix.
-    # T has two components; one from group activation and one from initial activity.
-    # The third dimension of the matrix has size num_n_groups + 1. The last value in that dimension
+    # T has two components; one from neutron activation and one from initial activity.
+    # Create a matrix with a third dimension of size num_n_groups + 1. The last value in that dimension
     # is the initial activity which is independent of the flux.
     T = np.zeros(shape=(num_mats, num_decay_times, num_n_groups + 1, num_p_groups))
     # Split results array "p_sources" by the number of materials.
@@ -1293,9 +1293,9 @@ def calc_T(data_dir, mats, num_mats, neutron_spectrum, num_n_groups, irr_time, d
     n_spectrum = neutron_spectrum.reshape(num_n_groups, 1, 1)
     for m in range(num_mats):
         p_source = p_sources[m].reshape(num_n_groups + 2, num_decay_times, num_p_groups)
-        # subtract the initial activity per group from the results of activation for all n groups
+        # Subtract the initial activity per group from the results of activation for all n groups.
+        # Store values per group to a temporary array
         T_mat = np.divide(np.subtract(p_source[:-2, :, :], p_source[-1, :, :]), n_spectrum)
-        # Store values per group to T array
         # T_mat has shape (num_n_groups, num_decay_times, num_p_groups), need to change to
         # (num_decay_times, num_n_groups, num_p_groups). Use numpy.swapaxes.
         T[m, :, :-1, :] = np.swapaxes(T_mat, 0, 1)
