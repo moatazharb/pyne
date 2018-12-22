@@ -2165,6 +2165,7 @@ class MeshTally(StatMesh):
             res_tag[:] = result.transpose()
             rel_err_tag[:] = rel_error.transpose()
 
+        self.flux_result = result.transpose()    
         # If "total" data exists (i.e. if there is more than
         # 1 energy group) get it and tag it onto the mesh.
         if num_e_groups > 1:
