@@ -13,7 +13,7 @@ from pyne.bins import pointwise_collapse
 from pyne.material import Material, MaterialLibrary
 from pyne.partisn import write_partisn_input, isotropic_vol_source
 from pyne.dagmc import discretize_geom, load, cell_material_assignments
-from pyne.alara import calc_eta
+from pyne.alara import calc_eta, calc_T
 
 
 config_filename = 'config.yml'
