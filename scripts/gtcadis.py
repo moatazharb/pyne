@@ -8,7 +8,7 @@ import argparse
 import numpy as np
 from sets import Set
 from pyne import nucname
-from pyne.mesh import Mesh, IMeshTag
+from pyne.mesh import Mesh
 from pyne.bins import pointwise_collapse
 from pyne.material import Material, MaterialLibrary
 from pyne.partisn import write_partisn_input, isotropic_vol_source
