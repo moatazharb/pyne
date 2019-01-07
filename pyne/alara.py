@@ -1237,3 +1237,86 @@ def calc_eta(data_dir, mats, num_mats, neutron_spectrum, num_n_groups, irr_time,
     
     return eta, phtn_src_file
     
+def calc_T(data_dir, mats, num_mats, neutron_spectrum, num_n_groups, irr_time, decay_times, p_bins,
+           num_p_groups, run_dir):
+    """
+    Function that returns T matrix. T values per material, decay time, neutron energy group, 
+    and photon energy group.
+    
+    Parameters
+    ----------
+    data_dir : str
+        Path to directory containing nuclib and fendl files
+    mats: list
+        List of tuples, (<mat name>, <PyNE material object>) 
+    num_mats: int
+        Number of materials in mats
+    neutron_spectrum : numpy array
+        Neutron energy spectrum (length is equal to number of n energy groups)
+    num_n_groups: int
+        Number of neutron energy groups
+    irr_time : float
+        Irradiation time [s]
+    decay_times : list
+        Decay times [s]
+    p_bins: numpy array
+        Photon energy bin bounds
+    num_p_groups: int
+        Number of photon energy groups for ALARA calculation
+    run_dir: str
+        Path to write ALARA input and output files    
+        
+    Returns
+    ----------
+    T : numpy.ndarray
+        T matrix for each material listed. This is a 4D array
+        [num_mats, num_decay_times, num_n_groups, num_p_groups + 1].
+    """
+    num_decay_times = len(decay_times)
+    
+    # Run ALARA only if photon source file from step 0 doesn't exist otherwise, parse existing one.
+    phtn_src_file = 'step0_phtn_src'
+    if not os.path.exists(phtn_src_file):
+        # Run ALARA.
+        phtn_src_file = _gt_alara(data_dir, mats, num_mats, neutron_spectrum, num_n_groups, irr_time,
+                                  decay_times, num_decay_times, p_bins, num_p_groups, run_dir)
+    else:
+        print('Using existing ALARA photon source file, step0_phtn_src, produced in Step 0.')
+        
+    # Parse ALARA output.
+    # Create an array to store results from photn_src file.
+    entries_per_material = (num_n_groups + 2) * num_decay_times
+    num_rows = num_mats * entries_per_material
+    p_sources = np.zeros(shape=(num_rows, num_p_groups))
+    with open(phtn_src_file, 'r') as f:
+        # Initiate a block number.
+        i = 0
+        for line in f.readlines():
+            l = line.split()
+            if l[0] == "TOTAL" and l[1] != "shutdown":
+                p_sources[i, :] = np.array([float(x) for x in l[3:]])
+                i += 1
+
+    # Calculate T matrix.
+    # T has two components; one from neutron activation and one from initial activity.
+    # Create a matrix with a third dimension of size num_n_groups + 1. The last value in that dimension
+    # is the initial activity which is independent of the flux.
+    T = np.zeros(shape=(num_mats, num_decay_times, num_n_groups + 1, num_p_groups))
+    # Split results array "p_sources" by the number of materials.
+    p_sources = np.split(p_sources, num_mats, axis=0)
+    n_spectrum = neutron_spectrum.reshape(num_n_groups, 1, 1)
+    for m in range(num_mats):
+        p_source = p_sources[m].reshape(num_n_groups + 2, num_decay_times, num_p_groups)
+        # Subtract the initial activity per group from the results of activation for all n groups.
+        # Store values per group to a temporary array
+        T_mat = np.divide(np.subtract(p_source[:-2, :, :], p_source[-1, :, :]), n_spectrum)
+        # T_mat has shape (num_n_groups, num_decay_times, num_p_groups), need to change to
+        # (num_decay_times, num_n_groups, num_p_groups). Use numpy.swapaxes.
+        T[m, :, :-1, :] = np.swapaxes(T_mat, 0, 1)
+        # Store initial activity to T array
+        T[m, :, -1, :] = p_source[-1, :,:]
+
+    T[np.isnan(T)] = 1.0
+    T[np.isinf(T)] = 1.0E10
+
+    return T    

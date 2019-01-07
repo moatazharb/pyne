@@ -341,6 +341,51 @@ def step1(cfg, cfg1):
         nuc_hdf5path="/nucid",
         fine_per_coarse=1)
                
+def step2(cfg, cfg2):
+    """
+    This function calculates the T matrix; T values per material, neutron group, photon group, 
+    and decay time.
+    
+    Parameters
+    ----------
+    cfg : dictionary
+        User input for 'general' from the config.yml file
+    cfg2: dictionary
+        User input for step 2 from config.yml file
+    """
+    # Get user input from config file
+    clean = cfg['clean']
+    num_p_groups = cfg['p_groups']
+    num_n_groups = cfg['n_groups']
+    geom = cfg2['n_geom_file']
+    data_dir = cfg2['data_dir']
+    irr_time = cfg2['irr_time']
+    decay_times = str(cfg2['decay_times']).split(' ')
+ 
+    # Define a flat, 175 group, neutron spectrum with magnitude 1.0E12 [n/cm^2.s]
+    group_flux_magnitude = 1.0E12
+    neutron_spectrum = group_flux_magnitude * np.ones(num_n_groups)
+                
+    # Get materials from geometry file
+    mat_lib = MaterialLibrary(geom)
+    mats = mat_lib.items()
+    num_mats = len(mats)
+
+    # Calculate T matrix
+    run_dir = 'step2'
+    if not os.path.exists(run_dir):
+        os.makedirs(run_dir)                
+    # Get the photon energy bin structure
+    p_bins = _get_p_bins(num_p_groups)
+    T = calc_T(data_dir, mats, num_mats, neutron_spectrum, num_n_groups, irr_time, decay_times,
+               p_bins, num_p_groups, run_dir)
+    # Save T matrix to numpy array
+    np.save('step2_T.npy', T)
+
+    if clean:
+        print("Deleting intermediate files for Step 2")
+        shutil.rmtree(run_dir)
+        
 def main():
     """ 
     This function manages the setup and steps 1-5 for the GT-CADIS workflow.
@@ -351,12 +396,14 @@ def main():
     setup_help = ('Prints the file "config.yml" to be filled in by the user.\n')
     step0_help = ('Performs SNILB criteria check.')
     step1_help = ('Creates the PARTISN input file for adjoint photon transport.')
+    step2_help = ('Calculates T matrix for materials in the geometry.')
     
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help=gtcadis_help, dest='command')
     setup_parser = subparsers.add_parser('setup', help=setup_help)
     step0_parser = subparsers.add_parser('step0', help=step0_help)
     step1_parser = subparsers.add_parser('step1', help=step1_help)
+    step2_parser = subparsers.add_parser('step2', help=step2_help)
 
     args, other = parser.parse_known_args()
     if args.command == 'setup':
@@ -368,7 +415,9 @@ def main():
     if args.command == 'step0':
         step0(cfg['general'], cfg['step2'])
     elif args.command == 'step1':
-        step1(cfg['general'], cfg['step1'])   
+        step1(cfg['general'], cfg['step1'])        
+    elif args.command == 'step2':
+        step2(cfg['general'], cfg['step2'])    
 
 if __name__ == '__main__':
     main()
