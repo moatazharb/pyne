@@ -11,8 +11,8 @@ from pyne.alara import mesh_to_fluxin, record_to_geom, photon_source_to_hdf5, \
 warn(__name__ + " is not yet QA compliant.", QAWarning)
 
 
-def irradiation_setup(flux_mesh, cell_mats, alara_params, tally_num=4,
-                      geom=None, num_rays=10, grid=False, flux_tag="n_flux",
+def irradiation_setup(flux_mesh, cell_mats, cell_fracs, alara_params, tally_num=4,
+                      num_rays=10, grid=False, flux_tag="n_flux", 
                       fluxin="alara_fluxin", reverse=False,
                       alara_inp="alara_inp", alara_matlib="alara_matlib",
                       output_mesh="r2s_step1.h5m", output_material=False,
@@ -26,17 +26,16 @@ def irradiation_setup(flux_mesh, cell_mats, alara_params, tally_num=4,
         The source of the neutron flux information. This can be a PyNE Meshtal
         object, a pyne Mesh object, or the filename an MCNP meshtal file, or
         the filename of an unstructured mesh tagged with fluxes.
-    tally_num : int
-        The MCNP FMESH4 tally number of the neutron flux tally within the
-        meshtal file.
     cell_mats : dict
         Maps geometry cell numbers to PyNE Material objects.
+    cell_fracs : record array
+        The output of dagmc.discretize_geom()
     alara_params : str
         The ALARA input blocks specifying everything except the geometry
         and materials. This can either be passed as string or as a file name.
-    geom : str, optional
-        The file name of a DAGMC-loadable faceted geometry. This is only
-        necessary if the geometry is not already loaded into memory.
+    tally_num : int
+        The MCNP FMESH4 tally number of the neutron flux tally within the
+        meshtal file.
     num_rays : int, optional
         The number of rays to fire down a mesh row for geometry discretization.
         This number must be a perfect square if grid=True.
@@ -69,11 +68,8 @@ def irradiation_setup(flux_mesh, cell_mats, alara_params, tally_num=4,
     sub_voxel : bool, optional
         If true, sub-voxel r2s work flow  will be used.
     """
-    from pyne.dagmc import load, discretize_geom
-    if geom is not None and isfile(geom):
-        load(geom)
 
-    #  flux_mesh is Mesh object
+    # flux_mesh is Mesh object
     if isinstance(flux_mesh, Mesh):
         m = flux_mesh
     #  flux_mesh is unstructured mesh file
@@ -98,12 +94,9 @@ def irradiation_setup(flux_mesh, cell_mats, alara_params, tally_num=4,
                              " object, MCNP meshtal file or meshtal.h5m file.")
 
     if m.structured:
-        cell_fracs = discretize_geom(m, num_rays=num_rays, grid=grid)
         # tag cell fracs
         if sub_voxel:
             m.tag_cell_fracs(cell_fracs)
-    else:
-        cell_fracs = discretize_geom(m)
 
     if output_material:
         m.cell_fracs_to_mats(cell_fracs, cell_mats)

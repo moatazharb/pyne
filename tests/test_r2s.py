@@ -18,11 +18,6 @@ if not HAVE_PYMOAB:
     from nose.plugins.skip import SkipTest
     raise SkipTest
 
-try:
-    from pyne import dagmc
-except:
-    from nose.plugins.skip import SkipTest
-    raise SkipTest
 
 from pyne.utils import QAWarning
 warnings.simplefilter("ignore", QAWarning)
@@ -49,8 +44,19 @@ def irradiation_setup_structured(flux_tag = "n_flux", meshtal_file = "meshtal_2x
     alara_matlib = os.path.join(os.getcwd(), "alara_matlib")
     output_mesh = os.path.join(os.getcwd(), "r2s_step1.h5m")
     output_material = True
-
-    irradiation_setup(meshtal, cell_mats, alara_params, tally_num, geom,
+    cell_fracs = np.zeros(8, dtype=[('idx', np.int64),
+                                ('cell', np.int64),
+                                ('vol_frac', np.float64),
+                                ('rel_error', np.float64)])
+    cell_fracs[:] = [(0, 2, 0.037037037037037035, 0.5443310539518174),
+                     (0, 3, 0.9629629629629631, 0.010467904883688123),
+                     (1, 2, 0.037037037037037035, 0.5443310539518174),
+                     (1, 3, 0.9629629629629629, 0.010467904883688454),
+                     (2, 2, 0.037037037037037035, 0.5443310539518174),
+                     (2, 3, 0.9629629629629629, 0.010467904883688454),
+                     (3, 2, 0.037037037037037035, 0.5443310539518174),
+                     (3, 3, 0.9629629629629629, 0.010467904883688454)]
+    irradiation_setup(meshtal, cell_mats, cell_fracs, alara_params, tally_num,
                       num_rays, grid, flux_tag, fluxin, reverse, alara_inp,
                       alara_matlib, output_mesh, output_material)
 
@@ -195,9 +201,13 @@ def irradiation_setup_unstructured(flux_tag = "n_flux"):
     alara_matlib= os.path.join(os.getcwd(), "alara_matlib")
     output_mesh= os.path.join(os.getcwd(), "r2s_step1.h5m")
     output_material = True
-
-    irradiation_setup(flux_mesh=meshtal_mesh_file, cell_mats=cell_mats,
-                      alara_params=alara_params, geom=geom, flux_tag=flux_tag,
+    cell_fracs = np.zeros(4, dtype=[('idx', np.int64),
+                                ('cell', np.int64),
+                                ('vol_frac', np.float64),
+                                ('rel_error', np.float64)])
+    cell_fracs[:] = [(0, 3, 1.0, 1.0), (1, 3, 1.0, 1.0), (2, 3, 1.0, 1.0), (3, 3, 1.0, 1.0)]
+    irradiation_setup(flux_mesh=meshtal_mesh_file, cell_mats=cell_mats, cell_fracs=cell_fracs,
+                      alara_params=alara_params, flux_tag=flux_tag, 
                       fluxin=fluxin, reverse=reverse, alara_inp=alara_inp,
                       alara_matlib=alara_matlib, output_mesh=output_mesh,
                       output_material=output_material)
@@ -232,7 +242,6 @@ def irradiation_setup_unstructured(flux_tag = "n_flux"):
 def test_irradiation_setup_unstructured():
 
     # make new file with non default tag
-
     p = multiprocessing.Pool()
     r = p.apply_async(irradiation_setup_unstructured)
     p.close()
