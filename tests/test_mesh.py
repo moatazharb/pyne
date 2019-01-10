@@ -7,7 +7,8 @@ import warnings
 import itertools
 from operator import itemgetter
 from nose.tools import assert_true, assert_equal, assert_raises, with_setup, \
-    assert_is, assert_is_instance, assert_in, assert_not_in, assert_almost_equal
+    assert_is, assert_is_instance, assert_in, assert_not_in, assert_almost_equal, \
+    assert_is_none, assert_is_not_none, assert_false
 
 import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
@@ -670,6 +671,45 @@ def test_nativetag():
     # deleting tag
     del m.f[:]
 
+def test_del_nativetag():
+    mats = {
+        0: Material({'H1': 1.0, 'K39': 1.0}, density=42.0),
+        1: Material({'H1': 0.1, 'O16': 1.0}, density=43.0),
+        2: Material({'He4': 42.0}, density=44.0),
+        3: Material({'Tm171': 171.0}, density=45.0),
+        }
+    m = gen_mesh(mats=mats)
+    m.f = NativeMeshTag(mesh=m, name='f')
+    m.f[:] = [1.0, 2.0, 3.0, 4.0]
+    m.g = NativeMeshTag(mesh=m, name='g')
+    m.g[:] = [1.0, 2.0, 3.0, 4.0]
+
+    assert_raises(ValueError, m.delete_tag,-12)
+
+    import sys
+
+    # make a new reference to the tag that will not
+    # be deleted
+    tag_ref = m.f
+
+    # deleting tag by tag name
+    m.delete_tag('f')
+
+    # ensure that there are only 2 references to this tag
+    # 1. is the tag_ref created above
+    # 2. is the one that automatically is the temporary
+    #    reference created as the argument to getrefcount
+    assert_equal(2,sys.getrefcount(tag_ref))
+
+    assert_raises(RuntimeError,m.mesh.tag_get_handle,'f')
+
+    # deleting tag by tag handle
+    tag_ref = m.g
+    m.delete_tag(m.g)
+    assert_equal(2,sys.getrefcount(tag_ref))
+    
+    assert_raises(RuntimeError,m.mesh.tag_get_handle,'g')
+    
 def test_nativetag_fancy_indexing():
     m = gen_mesh()
 
