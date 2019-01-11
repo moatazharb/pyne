@@ -17,7 +17,8 @@
    - write_hdf5(self, filename) -> write_hdf5(self, filename, write_mats)
    - new save(self, filename, write_mats) (alias for write hdf5)
    - new class MeshSetIterator()
-   - Direct call to the mesh entities change accordingly for example:
+   - new get_tag(self, tag_name) and delete_tag(self, tag_name) methods
+   - direct call to the mesh entities change accordingly for example:
       - getEntSets() -> get_entities_by_type( , )
       - getTagHandle('XXX') -> tag_get_handle(types.XXXXX)
       - iterate() -> mesh_iterate()
