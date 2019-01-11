@@ -15,15 +15,15 @@
    - IMeshTag changed to NativeMeshTag, with according tagetype name change:
      from 'imesh' to 'nat_mesh'
    - write_hdf5(self, filename) -> write_hdf5(self, filename, write_mats)
+   - new save(self, filename, write_mats) (alias for write hdf5)
+   - new class MeshSetIterator()
    - Direct call to the mesh entities change accordingly for example:
       - getEntSets() -> get_entities_by_type( , )
       - getTagHandle('XXX') -> tag_get_handle(types.XXXXX)
       - iterate() -> mesh_iterate()
       - getAllTags(xx) -> tag_get_tags_on_entity(xx)
       - mesh.destroyTag(self, boolean) -> mesh.delete_tag(self)
-      - ... (see PyTAPS and PyMOAB documentations)
-   - new save(self, filename, write_mats) (alias for write hdf5)
-   - new class MeshSetIterator()
+      - ... (see PyTAPS and PyMOAB respective documentation)
    - those changes have been propagated in mcnp.py, alara.py, ccc.py, dagmc.pyx,
      r2s.py, variancereduction.py, expand_tags.py, and their respective tests... 
 
