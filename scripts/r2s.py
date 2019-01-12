@@ -8,7 +8,7 @@ except ImportError:
 from os.path import isfile
 
 from pyne.mesh import Mesh
-from pyne.dagmc import cell_materials, load
+from pyne.dagmc import cell_materials, load, discretize_geom
 from pyne.r2s import irradiation_setup, photon_sampling_setup,\
                        total_photon_source_intensity
 from pyne.alara import photon_source_to_hdf5, photon_source_hdf5_to_mesh,\
@@ -116,21 +116,31 @@ def step1():
     tally_num = config.getint('step1', 'tally_num')
     flux_tag = config.get('step1', 'flux_tag')
     decay_times = config.get('step2', 'decay_times').split(',')
-
-    if structured:
-        meshtal = Meshtal(meshtal,
-                        {tally_num: (flux_tag, flux_tag + '_err',
-                                     flux_tag + '_total',
-                                     flux_tag + '_err_total')},
-                        meshes_have_mats=False)
     geom = config.get('step1', 'geom')
     reverse = config.getboolean('step1', 'reverse')
     num_rays = config.getint('step1', 'num_rays')
     grid = config.getboolean('step1', 'grid')
 
     load(geom)
+    # get meshtal info from meshtal file
+    if structured:
+        meshtal = Meshtal(meshtal,
+                        {tally_num: (flux_tag, flux_tag + '_err',
+                                     flux_tag + '_total',
+                                     flux_tag + '_err_total')},
+                        meshes_have_mats=False)
+        m = meshtal.tally[tally_num]
+
+    # create the cell_fracs array before irradiation_steup
+    if m.structured:
+        cell_fracs = discretize_geom(m, num_rays=num_rays, grid=grid)
+        # tag cell fracs for both default and subvoxel r2s modes
+        m.tag_cell_fracs(cell_fracs)
+    else:
+        cell_fracs = discretize_geom(m)
+
     cell_mats = cell_materials(geom)
-    irradiation_setup(meshtal, cell_mats, alara_params_filename, tally_num,
+    irradiation_setup(meshtal, cell_mats, cell_fracs, alara_params_filename, tally_num,
                       num_rays=num_rays, grid=grid, reverse=reverse,
                       flux_tag=flux_tag, decay_times=decay_times,
                       sub_voxel=sub_voxel)
@@ -144,10 +154,10 @@ def step1():
     ves = list(mesh.iter_ve())
     tags_keep = ("cell_number", "cell_fracs",
                  "cell_largest_frac_number", "cell_largest_frac")
-    for tag in mesh.mesh.getAllTags(ves[0]):
+    for tag in mesh.get_all_tags():
         if tag.name not in tags_keep:
-            mesh.mesh.destroyTag(tag, True)
-    mesh.mesh.save('blank_mesh.h5m')
+	     tag.delete()
+    mesh.write_hdf5('blank_mesh.h5m')
     print('The file blank_mesh.h5m has been saved to disk.')
     print('Do not delete this file; it is needed by r2s.py step2.\n')
 
@@ -180,7 +190,7 @@ def step2():
         tags = {('TOTAL', dc): tag_name}
         photon_source_hdf5_to_mesh(mesh, h5_file, tags, sub_voxel=sub_voxel,
                                    cell_mats=cell_mats)
-        mesh.mesh.save('{0}_{1}.h5m'.format(output, i+1))
+        mesh.write_hdf5('{0}_{1}.h5m'.format(output, i+1))
         intensity = total_photon_source_intensity(mesh, tag_name,
                                                   sub_voxel=sub_voxel)
         intensities += "{0}: {1}\n".format(dc, intensity)

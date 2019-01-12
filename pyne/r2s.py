@@ -93,11 +93,6 @@ def irradiation_setup(flux_mesh, cell_mats, cell_fracs, alara_params, tally_num=
             raise ValueError("meshtal argument not a Mesh object, Meshtal"
                              " object, MCNP meshtal file or meshtal.h5m file.")
 
-    if m.structured:
-        # tag cell fracs
-        if sub_voxel:
-            m.tag_cell_fracs(cell_fracs)
-
     if output_material:
         m.cell_fracs_to_mats(cell_fracs, cell_mats)
 
@@ -174,7 +169,7 @@ def total_photon_source_intensity(m, tag_name, sub_voxel=False):
     """
 
     sd_tag = m.get_tag(tag_name)
-    intensity = 0.
+    intensity = 0.0
     if sub_voxel:
         cell_fracs = m.cell_fracs[:]
         max_num_cells = len(cell_fracs[0])
