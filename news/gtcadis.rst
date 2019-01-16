@@ -1,9 +1,8 @@
 **Added:** 
 
-* added gtcadis.py script
-* first step for the GT-CADIS workflow, further steps to follow
-
-**Changed:** None
+**Changed:**
+* gtcadis.py: added step 2 for the GT-CADIS workflow, further steps to follow
+* alara.py: added calc_T function to calculate T matrix
 
 **Deprecated:** None
 
